@@ -116,6 +116,14 @@ CmodbusDlg::CmodbusDlg(CWnd* pParent /*=nullptr*/)
 	, m_mod_edit_xceil(0)
 	, m_mod_edit_yceil(0)
 	, m_mod_edit_thetaceil(0)
+	, m_mod_edit_threshold(0)
+	, m_mod_edit_filter(0)
+	, m_mod_edit_rect_width(0)
+	, m_mod_edit_height(0)
+	, m_mod_edit_rect_topleft_x(0)
+	, m_mod_edit_rect_topleft_y(0)
+	, m_mod_edit_right_rect_topleft_x(0)
+	, m_mod_edit_right_rect_topleft_y(0)
 {
 
 }
@@ -157,6 +165,14 @@ void CmodbusDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_THETACEILING, m_mod_edit_thetaceil);
 	DDX_Control(pDX, IDC_MOD_PIC_LOGO, m_mod_pic_logo);
 	DDX_Control(pDX, IDC_BUTTON1, m_mod_btn_timesend);
+	DDX_Text(pDX, IDC_EDIT_THETAFLOOR2, m_mod_edit_threshold);
+	DDX_Text(pDX, IDC_EDIT_THETACEILING2, m_mod_edit_filter);
+	DDX_Text(pDX, IDC_EDIT_THETAFLOOR3, m_mod_edit_rect_width);
+	DDX_Text(pDX, IDC_EDIT_THETACEILING3, m_mod_edit_height);
+	DDX_Text(pDX, IDC_EDIT_THETAFLOOR4, m_mod_edit_rect_topleft_x);
+	DDX_Text(pDX, IDC_EDIT_THETAFLOOR5, m_mod_edit_rect_topleft_y);
+	DDX_Text(pDX, IDC_EDIT_THETAFLOOR6, m_mod_edit_right_rect_topleft_x);
+	DDX_Text(pDX, IDC_EDIT_THETAFLOOR7, m_mod_edit_right_rect_topleft_y);
 }
 
 
@@ -177,6 +193,7 @@ BEGIN_MESSAGE_MAP(CmodbusDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_MOD_BTN_CHANGE, &CmodbusDlg::OnBnClickedModBtnChange)
 	ON_WM_HELPINFO()
 	ON_BN_CLICKED(IDC_MOD_BTN_OPMON, &CmodbusDlg::OnBnClickedModBtnOpmon)
+	
 END_MESSAGE_MAP()
 
 
@@ -296,7 +313,7 @@ BOOL CmodbusDlg::OnInitDialog()
 	//m_IdentifyList.SetExtendedStyle(dwStyle2);//设置扩展风格
 
 	//串口信息connect
-	m_SerialPort.readReady.connect(this, &CmodbusDlg::OnReceive);
+	//m_SerialPort.readReady.connect(this, &CmodbusDlg::OnReceive);
 	//定义一个画刷
 	m_Brush.CreateSolidBrush(RGB(240, 240, 220));
 
@@ -443,6 +460,15 @@ BOOL CmodbusDlg::OnInitDialog()
 	GetDlgItem(IDC_STATIC18)->SetFont(&f_mod_font, false);
 	GetDlgItem(IDC_STATIC19)->SetFont(&f_mod_font, false);
 	GetDlgItem(IDC_STATIC20)->SetFont(&f_mod_font, false);
+
+	GetDlgItem(IDC_STATIC21)->SetFont(&f_mod_font, false);
+	GetDlgItem(IDC_STATIC22)->SetFont(&f_mod_font, false);
+	GetDlgItem(IDC_STATIC23)->SetFont(&f_mod_font, false);
+	GetDlgItem(IDC_STATIC24)->SetFont(&f_mod_font, false);
+	GetDlgItem(IDC_STATIC25)->SetFont(&f_mod_font, false);
+	GetDlgItem(IDC_STATIC26)->SetFont(&f_mod_font, false);
+	GetDlgItem(IDC_STATIC27)->SetFont(&f_mod_font, false);
+	GetDlgItem(IDC_STATIC28)->SetFont(&f_mod_font, false);
 	//三个 group_box
 	GetDlgItem(IDC_STATIC3)->SetFont(&f_mod_font, false);
 	GetDlgItem(IDC_STATIC10)->SetFont(&f_mod_font, false);
@@ -508,7 +534,9 @@ BOOL CmodbusDlg::OnInitDialog()
 	m_mod_pic_logo.SetBitmap(m_mod_hBitmap_logo);
 	
 	CInfoFile file;
-	file.ReadDocline(backboard, x_floor, x_ceil, y_floor, y_ceil, theta_floor, theta_ceil);
+	file.ReadDocline(backboard, x_floor, x_ceil, y_floor, y_ceil, theta_floor, theta_ceil, hv_Threshold_8,
+		hv_Filter_block_radius_8, rect_height,  rect_width, m_startPos_left_8_x,
+		 m_startPos_left_8_y,  m_startPos_right_8_x,  m_startPos_right_8_y);
 	m_mod_type = backboard;
 	m_mod_edit_xfloor = x_floor;
 	m_mod_edit_xceil = x_ceil;
@@ -516,6 +544,16 @@ BOOL CmodbusDlg::OnInitDialog()
 	m_mod_edit_yceil = y_ceil;
 	m_mod_edit_thetafloor = theta_floor;
 	m_mod_edit_thetaceil = theta_ceil;
+
+	m_mod_edit_threshold = hv_Threshold_8;
+	m_mod_edit_filter = hv_Filter_block_radius_8;
+	//存盘的是压缩后的裁剪框位置和尺寸,编辑框显示中的是实际的裁剪框位置和尺寸,所以编辑框显示时要乘以压缩比
+	m_mod_edit_height = rect_height * scale;
+	m_mod_edit_rect_width = rect_width * scale;
+	m_mod_edit_rect_topleft_x = m_startPos_left_8_x*scale;
+	m_mod_edit_rect_topleft_y = m_startPos_left_8_y * scale;
+	m_mod_edit_right_rect_topleft_x = m_startPos_right_8_x * scale;
+	m_mod_edit_right_rect_topleft_y = m_startPos_right_8_y * scale;
 	UpdateData(FALSE);
 
 	HANDLE hthreadREC = AfxBeginThread(ThreadRec, this, THREAD_PRIORITY_BELOW_NORMAL);
@@ -945,7 +983,7 @@ void CmodbusDlg::OnReceive()
 					{
 						ArriveFlag = false;
 						//背板不在（离开）要把这个置为false，方便下一次进入程序
-						IdentifyDone = false;
+						SendDone = false;
 					}
 
 					//胶机状态位
@@ -1089,7 +1127,7 @@ void CmodbusDlg::OnReceive()
 
 
 		
-		if (IdentifyDone == true && insertdata == 0)
+		if (SendDone == true && insertdata == 0)
 		{
 			CTime curTime;//当前时间
 			curTime = CTime::GetCurrentTime();
@@ -1380,7 +1418,20 @@ void CmodbusDlg::OnBnClickedModBtnChange()
 	y_ceil = m_mod_edit_yceil;
 	theta_floor = m_mod_edit_thetafloor;
     theta_ceil = m_mod_edit_thetaceil;
-	file.WirteDocline(backboard, x_floor, x_ceil, y_floor, y_ceil, theta_floor, theta_ceil);
+
+	hv_Threshold_8 = m_mod_edit_threshold;
+	hv_Filter_block_radius_8 = m_mod_edit_filter;
+	//编辑框显示中的是实际的裁剪框位置和尺寸,存盘的是压缩后的裁剪框位置和尺寸,所以存盘时要除以压缩比
+	rect_height = m_mod_edit_height / scale;
+	rect_width = m_mod_edit_rect_width / scale;
+	m_startPos_left_8_x = m_mod_edit_rect_topleft_x / scale;
+	m_startPos_left_8_y = m_mod_edit_rect_topleft_y / scale;
+	m_startPos_right_8_x = m_mod_edit_right_rect_topleft_x / scale;
+	m_startPos_right_8_y = m_mod_edit_right_rect_topleft_y /scale;
+
+	file.WirteDocline(backboard, x_floor, x_ceil, y_floor, y_ceil, theta_floor, theta_ceil,
+		hv_Threshold_8, hv_Filter_block_radius_8, rect_height, rect_width, m_startPos_left_8_x,
+		m_startPos_left_8_y, m_startPos_right_8_x, m_startPos_right_8_y);
 }
 
 
@@ -1398,6 +1449,14 @@ BOOL CmodbusDlg::OnHelpInfo(HELPINFO* pHelpInfo)
 void CmodbusDlg::JudgeStatus()
 {
 	// TODO: 在此处添加实现代码.
+	if ((vs_x >= x_floor && vs_x <= x_ceil) && (vs_y >= x_floor && vs_y <= y_ceil) && (vs_theta >= theta_floor && vs_theta <= theta_ceil))
+	{
+		data_good = _T("良品");
+	}
+	else
+	{
+		data_good = _T("非良品");
+	}
 	if (SprayFlag == false)
 		data_spray = _T("正常");
 	if (SprayFlag == true)
@@ -1429,3 +1488,8 @@ void CmodbusDlg::BitManipul(int temp)
 	}
 	//BitManu[14] 就是最高位
 }
+
+
+
+
+

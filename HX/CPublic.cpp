@@ -3,19 +3,6 @@
 
 
 //在公用类中对静态变量进行初始化
-bool CPublic::test1 = true;
-//判断背板是否到达
-bool CPublic::ArriveFlag = false;
-//是否执行
-bool CPublic::ExecuteIdentify = true;
-//判断是否识别完成
-bool CPublic::IdentifyDone = false;
-
-std::string CPublic::Port = "1";
-int CPublic::BaudRate = 0;
-int CPublic::Parity = 0;
-int CPublic::DataBits = 0;
-int CPublic::Stop = 0;
 
 
 

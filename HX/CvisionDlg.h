@@ -3,12 +3,25 @@
 #include "CLayout.h"
 #include "CMyButton.h"
 
-extern bool IdentifyDone;
+extern bool SendDone;
 //把时间全局给插入数据库用
 extern CString LastTime;
 extern double vs_x;
 extern double vs_y;
 extern double vs_theta;
+
+extern int hv_Threshold_8;
+extern int hv_Filter_block_radius_8;
+extern int m_startPos_right_8_y;
+extern int m_startPos_right_8_x;
+extern int m_startPos_left_8_y;
+extern int m_startPos_left_8_x;
+extern int rect_width;
+extern int rect_height;
+
+extern int scale;
+
+
 // CvisionDlg 对话框
 
 class CvisionDlg : public CDialogEx
@@ -94,10 +107,13 @@ public:
 
 	CString m_vs_edit_type;
 	DWORD m_vs_edit_batch;
-
+	
 
 	void OnShowList();
 	int m_test_locate_num;
 	int m_locate_test_wrong;
 	void OnInitLocateData();
+	void OnAllLeftLocate();
+	void OnAllRightLocate();
+	afx_msg void OnBnClickedButton2();
 };

@@ -59,6 +59,15 @@ void InitLayoutModbus(CLayout& layout, CWnd* parent)
 	layout.RegisterControl(IDC_STATIC18, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_STATIC19, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_STATIC20, CLayout::e_stretch_all);
+
+	layout.RegisterControl(IDC_STATIC21, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_STATIC22, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_STATIC23, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_STATIC24, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_STATIC25, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_STATIC26, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_STATIC27, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_STATIC28, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_EDIT_TYPE, CLayout::e_stretch_all);
 
 	layout.RegisterControl(IDC_EDIT_XFLOOR, CLayout::e_stretch_all);
@@ -67,6 +76,15 @@ void InitLayoutModbus(CLayout& layout, CWnd* parent)
 	layout.RegisterControl(IDC_EDIT_XCEILING, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_EDIT_YCEILING, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_EDIT_THETACEILING, CLayout::e_stretch_all);
+
+	layout.RegisterControl(IDC_EDIT_THETAFLOOR2, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_EDIT_THETACEILING2, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_EDIT_THETAFLOOR3, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_EDIT_THETACEILING3, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_EDIT_THETAFLOOR4, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_EDIT_THETAFLOOR5, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_EDIT_THETAFLOOR6, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_EDIT_THETAFLOOR7, CLayout::e_stretch_all);
 
 	layout.RegisterControl(IDC_MOD_STATIC_NAME, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_MOD_PIC_LOGO, CLayout::e_stretch_all);

@@ -41,7 +41,9 @@ void CInfoFile::WritePwd(char* name, char* pwd)
 }
 
 //读取商品信息
-void CInfoFile::ReadDocline(CString &type,double &x_floor, double &x_ceil, double &y_floor, double &y_ceil, double &theta_floor, double &theta_ceil)
+void CInfoFile::ReadDocline(CString &type,double &x_floor, double &x_ceil, double &y_floor, double &y_ceil, double &theta_floor, double &theta_ceil, int& hv_Threshold_8,
+	int& hv_Filter_block_radius_8, int& rect_height, int& rect_width, int& m_startPos_left_8_x,
+	int& m_startPos_left_8_y, int& m_startPos_right_8_x, int& m_startPos_right_8_y)
 {
 	std::vector<CString> vecResult;
 	std::vector<CString> strTmp;
@@ -84,6 +86,16 @@ void CInfoFile::ReadDocline(CString &type,double &x_floor, double &x_ceil, doubl
 	y_ceil = _wtof(strTmp[4]);
 	theta_floor = _wtof(strTmp[5]);
 	theta_ceil = _wtof(strTmp[6]);
+
+	hv_Threshold_8 = _wtof(strTmp[7]);
+	hv_Filter_block_radius_8 = _wtof(strTmp[8]);
+	rect_height = _wtof(strTmp[9]);
+	rect_width = _wtof(strTmp[10]);
+	m_startPos_left_8_x = _wtof(strTmp[11]);
+	m_startPos_left_8_y = _wtof(strTmp[12]);
+	m_startPos_right_8_x = _wtof(strTmp[13]);
+	m_startPos_right_8_y = _wtof(strTmp[14]);
+
 	/*tmp.frame_length = _wtof(strTmp[7]);
 	tmp.frame_width = _wtof(strTmp[8]);
 	tmp.image_threshold = _wtof(strTmp[9]);*/
@@ -91,11 +103,11 @@ void CInfoFile::ReadDocline(CString &type,double &x_floor, double &x_ceil, doubl
 }
 
 //写入文件
-void CInfoFile::WirteDocline(CString &type, double &x_floor, double &x_ceil, double &y_floor, double &y_ceil, double &theta_floor, double &theta_ceil)
+void CInfoFile::WirteDocline(CString &type, double &x_floor, double &x_ceil, double &y_floor, double &y_ceil, double &theta_floor, double &theta_ceil,int &hv_Threshold_8,
+	int &hv_Filter_block_radius_8,int &rect_height,int &rect_width, int &m_startPos_left_8_x,
+	int &m_startPos_left_8_y, int &m_startPos_right_8_x, int &m_startPos_right_8_y)
 {
 	
-	
-
 	//读取区域设定
 	char* old_locale = _strdup(setlocale(LC_CTYPE, NULL));
 	//设定“简体中文”区域
@@ -127,6 +139,25 @@ void CInfoFile::WirteDocline(CString &type, double &x_floor, double &x_ceil, dou
 	csdioFile.WriteString(DoubleToCString(theta_floor));
 	csdioFile.WriteString(_T(" "));
 	csdioFile.WriteString(DoubleToCString(theta_ceil));
+
+	csdioFile.WriteString(_T(" "));
+	csdioFile.WriteString(IntToCString(hv_Threshold_8));
+	csdioFile.WriteString(_T(" "));
+	csdioFile.WriteString(IntToCString(hv_Filter_block_radius_8));
+	csdioFile.WriteString(_T(" "));
+	csdioFile.WriteString(IntToCString(rect_height));
+	csdioFile.WriteString(_T(" "));
+	csdioFile.WriteString(IntToCString(rect_width));
+	csdioFile.WriteString(_T(" "));
+	csdioFile.WriteString(IntToCString(m_startPos_left_8_x));
+	csdioFile.WriteString(_T(" "));
+	csdioFile.WriteString(IntToCString(m_startPos_left_8_y));
+	csdioFile.WriteString(_T(" "));
+	csdioFile.WriteString(IntToCString(m_startPos_right_8_x));
+	csdioFile.WriteString(_T(" "));
+	csdioFile.WriteString(IntToCString(m_startPos_right_8_y));
+
+
 	csdioFile.WriteString(_T("\r\n"));
 	/*MidData = SendFreqData[4];
 	char MyChar[10];
@@ -190,5 +221,16 @@ CString CInfoFile::DoubleToCString(double x)
 	CString sTemp;
 	_gcvt_s(temp, 10, x, 8);//浮点型转为字符串
 	sTemp = CA2CT(temp);
+	return sTemp;
+}
+
+
+CString CInfoFile::IntToCString(int x)
+{
+	// TODO: 在此处添加实现代码.
+	char temp[1024];
+	CString sTemp;
+	_itoa_s(x, temp, 10);
+	sTemp = temp;
 	return sTemp;
 }

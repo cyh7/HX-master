@@ -20,6 +20,13 @@ int flag_sec_small = 2;
 int num_left;
 int num_right;
 
+//传给PLC的定位数据
+int Result[3] = {0,0,0};
+//和PLC约定的定标位置
+int BIAO_X;
+int BIAO_Y;
+
+
 //左右相机智能指针
 shared_ptr<SingleCam> leftCam;
 shared_ptr<SingleCam> rightCam;
@@ -34,7 +41,8 @@ int baoguang_time_8_right = 320000;
 /*以上参数用于打开相机OnOpenCam函数*/
 
 //定义左右相机定位完成标志,flag_locate_over==2时表示双相机定位完成
-byte flag_locate_over = 0;
+byte flag_locate_left_over = 0;
+byte flag_locate_right_over = 0;
 //以下参数用于列表中的定位数据显示
 CString Column_Left;
 CString Row_Left;
@@ -63,6 +71,19 @@ double ROW_RIGHT_8;
 double COL_RIGHT_8;
 double ANGLE;
 
+//定义用于计算左图角点的临时变量
+double a11, b11, c11, a21, b21, c21, d1;
+double x11, y11, x21, y21, x31, y31, x41, y41;
+//定义用于计算右图角点的临时变量
+double a12, b12, c12, a22, b22, c22, d2;
+double x12, y12, x22, y22, x32, y32, x42, y42;
+
+//声明采集图象并存盘成功的标志位
+bool flag_collect_success = false;
+//左相机定位可以开始定位的标志
+bool flag_left_locate_begin = 0;
+//右相机定位可以开始定位的标志
+bool flag_right_locate_begin = 0;
 
 /*以下参数用于采集，压缩，裁剪所用全局变量*/
 CBitmap bitmap_8_left;  // CBitmap对象，用于加载位图   
@@ -75,12 +96,12 @@ HTuple hv_Width = 5496;
 HTuple hv_Height = 3672;
 //定义图片显示的压缩比例
 int scale = 9;
-//左相机原图中的裁剪框坐标，用于图片裁剪
+//左相机原图中的裁剪框坐标，用于实际图片裁剪
 HTuple hv_Row1_left_8;
 HTuple hv_Column1_left_8;
 HTuple hv_Row2_left_8;
 HTuple hv_Column2_left_8;
-//左相机压缩图中的裁剪框坐标，用于裁剪框显示
+//左相机压缩图中的裁剪框坐标，用于压缩后的裁剪框显示
 int m_startPos_left_8_y = 0;
 int m_startPos_left_8_x = 0;
 int m_endPos_left_8_y = 250;
@@ -95,11 +116,17 @@ HTuple hv_Row1_right_8;
 HTuple hv_Column1_right_8;
 HTuple hv_Row2_right_8;
 HTuple hv_Column2_right_8;
+//定义显示用的裁剪框的长和宽
+int rect_width;
+int rect_height;
+
 //右相机压缩图中的裁剪框坐标，用于裁剪框显示
 int m_startPos_right_8_y = 100;
 int m_startPos_right_8_x = 100;
 int m_endPos_right_8_y = 360;
 int m_endPos_right_8_x = 480;
+
+
 
 HObject ho_image_right_8;
 HObject ho_ImageZoom_right_8;
@@ -148,12 +175,13 @@ HObject ho_xld_height_left_8;
 HTuple hv_ImagePart_Width_left_8;
 //定义左相机裁剪图片高度
 HTuple hv_ImagePart_Height_left_8;
-//定义左相机中值滤波块大小
-int hv_Filter_block_radius_left_8 = 3;
 
 
-//定义左相机阈值
-int hv_Threshold_left_8 = 100;
+//定义左右相机中值滤波块大小
+int hv_Filter_block_radius_8 = 3;
+
+//定义左右相机阈值
+int hv_Threshold_8 = 100;
 
 
 //定义左相机检测的水平直线最小长度
@@ -199,8 +227,10 @@ HTuple hv_COL_left_8;
 //定义左相机角点检测标志
 HTuple hv_IsOverlapping_left_8;
 
-//定义用于选择直线的临时变量
-int a1, b1, c1, d1;
+//定义用于选择左图中直线的临时变量
+int a13, b13, c13, d13;
+//定义用于选择右图中直线的临时变量
+int a14, b14, c14, d14;
 //定义右相机检测出来水平直线和垂直直线的端点坐标,用于显示定位效果
 int width_RowBegin_right_8 = 0;
 int width_ColBegin_right_8 = 0;
@@ -247,10 +277,6 @@ HTuple hv_ImagePart_Height_right_8;
 int test_times=0;
 int wrong_times=0;
 
-//定义右相机中值滤波块大小
-int hv_Filter_block_radius_right_8 = 3;
-//定义右相机阈值
-int hv_Threshold_right_8 = 100;
 
 
 //定义右相机检测的水平直线最小长度
@@ -300,8 +326,8 @@ HTuple hv_IsOverlapping_right_8;
 int BadVisionNum = 0;
 //当前发送的是第几个
 int LocVisionNum = 0;
-//判断是否识别完成
-bool IdentifyDone = false;
+//判断是否发送完成
+bool SendDone = false;
 
 //上一次时间
 CString LastTime;
@@ -314,6 +340,46 @@ double vs_y;
 double vs_theta;
 CvisionDlg * CvisionDlg::pVisiondlg = NULL;
 
+UINT ThreadLeftLocation(LPVOID param)
+{
+	CvisionDlg* pcollectdlg = CvisionDlg::pVisiondlg;
+	
+	while (1)
+	{
+		//long t1,t2;
+		//t1 = GetTickCount64();
+		//CString str;
+
+		if (flag_collect_success == true && flag_left_locate_begin == 0)
+		{
+			flag_left_locate_begin = 1;
+			pcollectdlg->OnAllLeftLocate();
+
+		}
+		//t2 = GetTickCount64();
+		//str.Format(L"time:%dms", t2 - t1);
+		//AfxMessageBox(str);
+		
+	}
+	return 0;
+}
+
+UINT ThreadRightLocation(LPVOID param)
+{
+	CvisionDlg* pcollectdlg = CvisionDlg::pVisiondlg;
+
+	while (1)
+	{
+		if (flag_collect_success == true && flag_right_locate_begin==0)
+		{
+			flag_right_locate_begin = 1;
+			pcollectdlg->OnAllRightLocate();
+		}
+
+
+	}
+	return 0;
+}
 
 // CvisionDlg 对话框
 
@@ -380,6 +446,7 @@ BEGIN_MESSAGE_MAP(CvisionDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_VS_BTN_RESEND, &CvisionDlg::OnBnClickedVsBtnResend)
 	ON_BN_CLICKED(IDC_BUTTON1, &CvisionDlg::OnBnClickedButton1)
 	
+	ON_BN_CLICKED(IDC_BUTTON2, &CvisionDlg::OnBnClickedButton2)
 END_MESSAGE_MAP()
 
 
@@ -595,6 +662,8 @@ BOOL CvisionDlg::OnInitDialog()
 	dc_left_8_ptr = shared_ptr<CClientDC>(new CClientDC(GetDlgItem(IDC_VS_8_LEFT_PIC)));
 	dc_right_8_ptr = shared_ptr<CClientDC>(new CClientDC(GetDlgItem(IDC_VS_8_RIGHT_PIC)));
 	
+	HANDLE hthreadRightLocation = AfxBeginThread(ThreadRightLocation, this, THREAD_PRIORITY_NORMAL);
+	HANDLE hthreadLeftLocation = AfxBeginThread(ThreadLeftLocation, this, THREAD_PRIORITY_NORMAL);
 	
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
@@ -862,72 +931,16 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 				m_Status_T2 = 0;//如果没有断线 那么在onReceive里会更改这个值，如果断线了那就不会更改了
 				//只能对上一个时间循环里的数据进行判断
 				if (ArriveFlag == true)
-					//如果已经到位,且未识别完成 加一个喷胶是否喷完的标志位
-					//进入判断是 到位，未识别完成，归根结底是什么时候进入判断呢，是在背板到了，再进入判断
-					//背板到了，就停止定时器
-					//主要问题，重启之后还是true怎么，把killtime放里边
-					//背板到位之后，开始判断喷胶，
-					//喷胶喷完为true,在下一台背板进来的时候喷胶标志位一直为true，进入判断的条件是
-					//SprayDone == false
-					//在背板到达时打为false 此时ArriveFlag = true 
+					
 				{
-					//IdentifyDone初始值设为false,执行完程序后设置为true，在背板离开的时候设置为false
+					//SendDone初始值设为false,执行完程序后设置为true，在背板离开的时候设置为false
 					//Sleep()
 					//Send()  发送喷胶判断
-					if (IdentifyDone == false)
+					if (SendDone == false)
 					{
 						KillTimer(1); //先终止该定时器，进行视觉处理
 
-						/*
-						识别完成的时候就把数据读到容器里
-						其实就三个数据可以换个方式
-						IdentifyDone = true;
-						//对比设置的界限
-						//产生是否良品字符串 在这里边判断只用写一个字符串就可以了
-						//当前的日期
-						//坐标数据
-						//三个状态 是来自收到
-
-						//程序识别完之后，直接开始settimer
-						SetTimer(2,30,Null);
-						*/
 						
-						//CTime curTime = CTime().GetCurrentTime();//当前时间
-						//LastTime = preTime.Format("%Y-%m-%d %H:%M:%S");
-						if ((vs_x >= x_floor && vs_x <= x_ceil) && (vs_y >= x_floor && vs_y <= y_ceil) && (vs_theta >= theta_floor && vs_theta <= theta_ceil))
-						{
-							data_good = _T("良品");
-						}
-						else
-						{
-							data_good = _T("非良品");
-						}
-
-						//if (SprayBatch > 0)
-						//{
-						//	
-						//	
-						//	LastTime;
-						//	SprayBatch;
-						//	backboard;
-						//	vs_x;
-						//	vs_y;
-						//	vs_theta;
-						//	
-						//	//插入数据库,插入(LastTime  1
-						//	//这里判断四个flag 生成四个CString 
-						//	//能进来就说明当前是正常的  要不通信状态不插入数据库
-						//	//上一次的坐标对比设置 CString 良与不良  7 8 9 10
-						//	//背板型号 2
-						//	//喷涂批次就是当前的SprayBatch 3
-						//	//X Y theta坐标   4 5 6
-						//}
-						//preTime = curTime;
-						insertdata = 0;
-						SprayBatch += 1;
-						//执行视觉识别程序 产生三个坐标，
-						SetTimer(2, 50, NULL);
-						//执行发送函数  这里的发送函数应该是启动定时器2
 					}
 				}
 
@@ -947,7 +960,7 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 				if (LocVisionNum < 3)
 				{
 					//SendData;
-					//SendData(1, LocVisionNum + 90, testLoc[LocVisionNum]);
+					SendData(1, LocVisionNum + 70, Result[LocVisionNum]);
 					LocVisionNum++;
 				}
 				//发送完毕
@@ -956,12 +969,12 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 					//SendData 这个跟轩举商量
 					//发送完毕 发送数清0
 					KillTimer(2);
-					IdentifyDone = true;
+					SendDone = true;
 					SendOnce_Vision = true;
 					SendData(1, 73, 21573);
 					LocVisionNum = 0;
 					m_Vision_T2 = GetTickCount64();//这里加一个计时是防止下一组背板错误判断
-					//SprayBatch += 1; //喷涂批次加一
+					SprayBatch += 1; //喷涂批次加一
 					//重启定时器1
 					DisconnectNum = 0;
 					ReSetTime();
@@ -979,7 +992,7 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 					//寄存器地址  发送的数据根据LocVisionNum来定
 
 					//SendData(1, , );
-					//SendData(1, LocVisionNum + 70, testLoc[LocVisionNum]);
+					SendData(1, LocVisionNum + 70, Result[LocVisionNum]);
 					//发送完之后做加一处理
 					LocVisionNum++;
 				}
@@ -1003,13 +1016,15 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 		}
 		case 3:
 		{
+			flag_collect_success = true;
+
 			m_test_locate_num = test_times;
 			//backboard背板型号
 			m_locate_test_wrong = wrong_times;
 			UpdateData(FALSE);
 
-			OnBnClickedButton1();
-
+			test_times++;
+			
 			break;
 		}
 	}
@@ -1059,7 +1074,7 @@ void coordinate_transformation_left()
 	left_robot_coordinate = r_left.inv() * (cam_matrix_left.inv() * s_left * left_pixel_coordinate - t_left);//从标定文件中读标定数据,将像素坐标转换为世界坐标
 	ROW_LEFT_8 = left_robot_coordinate.at<double>(0, 0);
 	COL_LEFT_8 = left_robot_coordinate.at<double>(1, 0);
-
+	flag_locate_left_over = 1;
 }
 
 void coordinate_transformation_right()
@@ -1079,25 +1094,25 @@ void coordinate_transformation_right()
 	right_robot_coordinate = r_right.inv() * (cam_matrix_right.inv() * s_right * right_pixel_coordinate - t_right);//从标定文件中读标定数据,将像素坐标转换为世界坐标
 	ROW_RIGHT_8 = right_robot_coordinate.at<double>(0, 0);
 	COL_RIGHT_8 = right_robot_coordinate.at<double>(1, 0);
+	
 }
 
-
-//定义直线数量
-int comparelines(HTuple linesbegin, HTuple linesend, int aaa)
+//在左图中如果找到多条直线,从中选择最靠近角点的直线
+int left_comparelines(HTuple linesbegin, HTuple linesend, int aaa)
 {
 	//aaa=1时取小的，aaa=2时取大的
 	TupleLength(linesbegin, &Num_lines);
 	if (Num_lines == 2 && aaa == 1)
 	{
 		if (linesbegin[0] > linesend[0])
-			a1 = linesbegin[0].D();
+			a13 = linesbegin[0].D();
 		else
-			a1 = linesend[0].D();
+			a13 = linesend[0].D();
 		if (linesbegin[1] > linesend[1])
-			b1 = linesbegin[1].D();
+			b13 = linesbegin[1].D();
 		else
-			b1 = linesend[1].D();
-		if (b1 > a1 || b1 == a1)
+			b13 = linesend[1].D();
+		if (b13 > a13 || b13 == a13)
 			return 1;
 		else
 			return 0;
@@ -1105,14 +1120,14 @@ int comparelines(HTuple linesbegin, HTuple linesend, int aaa)
 	if (Num_lines == 2 && aaa == 2)
 	{
 		if (linesbegin[0] < linesend[0])
-			a1 = linesbegin[0].D();
+			a13 = linesbegin[0].D();
 		else
-			a1 = linesend[0].D();
+			a13 = linesend[0].D();
 		if (linesbegin[1] < linesend[1])
-			b1 = linesbegin[1].D();
+			b13 = linesbegin[1].D();
 		else
-			b1 = linesend[1].D();
-		if (b1 < a1 || b1 == a1)
+			b13 = linesend[1].D();
+		if (b13 < a13 || b13 == a13)
 			return 1;
 		else
 			return 0;
@@ -1120,102 +1135,235 @@ int comparelines(HTuple linesbegin, HTuple linesend, int aaa)
 	if (Num_lines == 3 && aaa == 1)
 	{
 		if (linesbegin[0] > linesend[0])
-			a1 = linesbegin[0].D();
+			a13 = linesbegin[0].D();
 		else
-			a1 = linesend[0].D();
+			a13 = linesend[0].D();
 		if (linesbegin[1] > linesend[1])
-			b1 = linesbegin[1].D();
+			b13 = linesbegin[1].D();
 		else
-			b1 = linesend[1].D();
+			b13 = linesend[1].D();
 		if (linesbegin[2] > linesend[2])
-			c1 = linesbegin[2].D();
+			c13 = linesbegin[2].D();
 		else
-			c1 = linesend[2].D();
-		if ((b1 > a1 || b1 == a1) && (b1 > c1 || b1 == c1))
+			c13 = linesend[2].D();
+		if ((b13 > a13 || b13 == a13) && (b13 > c13 || b13 == c13))
 			return 1;
-		if ((a1 > b1 || a1 == b1) && (a1 > c1 || a1 == c1))
+		if ((a13 > b13 || a13 == b13) && (a13 > c13 || a13 == c13))
 			return 0;
-		if ((c1 > b1 || c1 == b1) && (c1 > a1 || c1 == a1))
+		if ((c13 > b13 || c13 == b13) && (c13 > a13 || c13 == a13))
 			return 2;
 	}
 	if (Num_lines == 3 && aaa == 2)
 	{
 		if (linesbegin[0] < linesend[0] || linesbegin[0] == linesend[0])
-			a1 = linesbegin[0].D();
+			a13 = linesbegin[0].D();
 		else
-			a1 = linesend[0].D();
+			a13 = linesend[0].D();
 		if (linesbegin[1] < linesend[1])
-			b1 = linesbegin[1].D();
+			b13 = linesbegin[1].D();
 		else
-			b1 = linesend[1].D();
+			b13 = linesend[1].D();
 		if (linesbegin[2] < linesend[2])
-			c1 = linesbegin[2].D();
+			c13 = linesbegin[2].D();
 		else
-			c1 = linesend[2].D();
-		if ((b1 < a1 || b1 == a1) && (b1 < c1 || b1 == c1))
+			c13 = linesend[2].D();
+		if ((b13 < a13 || b13 == a13) && (b13 < c13 || b13 == c13))
 			return 1;
-		if ((a1 < b1 || a1 == b1) && (a1 < c1 || a1 == c1))
+		if ((a13 < b13 || a13 == b13) && (a13 < c13 || a13 == c13))
 			return 0;
-		if ((c1 < b1 || c1 == b1) && (c1 < a1 || c1 == a1))
+		if ((c13 < b13 || c13 == b13) && (c13 < a13 || c13 == a13))
 			return 2;
 	}
 	if (Num_lines == 4 && aaa == 1)
 	{
 		if (linesbegin[0] > linesend[0])
-			a1 = linesbegin[0].D();
+			a13 = linesbegin[0].D();
 		else
-			a1 = linesend[0].D();
+			a13 = linesend[0].D();
 		if (linesbegin[1] > linesend[1])
-			b1 = linesbegin[1].D();
+			b13 = linesbegin[1].D();
 		else
-			b1 = linesend[1].D();
+			b13 = linesend[1].D();
 		if (linesbegin[2] > linesend[2])
-			c1 = linesbegin[2].D();
+			c13 = linesbegin[2].D();
 		else
-			c1 = linesend[2].D();
+			c13 = linesend[2].D();
 		if (linesbegin[3] > linesend[3])
-			d1 = linesbegin[3].D();
+			d13 = linesbegin[3].D();
 		else
-			d1 = linesend[3].D();
-		if ((b1 > a1 || b1 == a1) && (b1 > c1 || b1 == c1) && (b1 > d1 || b1 == d1))
+			d13 = linesend[3].D();
+		if ((b13 > a13 || b13 == a13) && (b13 > c13 || b13 == c13) && (b13 > d13 || b13 == d13))
 			return 1;
-		if ((a1 > b1 || a1 == b1) && (a1 > c1 || a1 == c1) && (a1 > d1 || a1 == d1))
+		if ((a13 > b13 || a13 == b13) && (a13 > c13 || a13 == c13) && (a13 > d13 || a13 == d13))
 			return 0;
-		if ((c1 > b1 || c1 == b1) && (c1 > a1 || c1 == a1) && (c1 > d1 || c1 == d1))
+		if ((c13 > b13 || c13 == b13) && (c13 > a13 || c13 == a13) && (c13 > d13 || c13 == d13))
 			return 2;
-		if ((d1 > b1 || d1 == b1) && (d1 > a1 || d1 == a1) && (d1 > c1 || d1 == c1))
+		if ((d13 > b13 || d13 == b13) && (d13 > a13 || d13 == a13) && (d13 > c13 || d13 == c13))
 			return 3;
 	}
 	if (Num_lines == 4 && aaa == 2)
 	{
 		if (linesbegin[0] < linesend[0])
-			a1 = linesbegin[0].D();
+			a13 = linesbegin[0].D();
 		else
-			a1 = linesend[0].D();
+			a13 = linesend[0].D();
 		if (linesbegin[1] < linesend[1])
-			b1 = linesbegin[1].D();
+			b13 = linesbegin[1].D();
 		else
-			b1 = linesend[1].D();
+			b13 = linesend[1].D();
 		if (linesbegin[2] < linesend[2])
-			c1 = linesbegin[2].D();
+			c13 = linesbegin[2].D();
 		else
-			c1 = linesend[2].D();
+			c13 = linesend[2].D();
 		if (linesbegin[3] < linesend[3])
-			d1 = linesbegin[3].D();
+			d13 = linesbegin[3].D();
 		else
-			d1 = linesend[3].D();
-		if ((b1 < a1 || b1 == a1) && (b1 < c1 || b1 == c1) && (b1 < d1 || b1 == d1))
+			d13 = linesend[3].D();
+		if ((b13 < a13 || b13 == a13) && (b13 < c13 || b13 == c13) && (b13 < d13 || b13 == d13))
 			return 1;
-		if ((a1 < b1 || a1 == b1) && (a1 < c1 || a1 == c1) && (a1 < d1 || a1 == d1))
+		if ((a13 < b13 || a13 == b13) && (a13 < c13 || a13 == c13) && (a13 < d13 || a13 == d13))
 			return 0;
-		if ((c1 < b1 || c1 == b1) && (c1 < a1 || c1 == a1) && (c1 < d1 || c1 == d1))
+		if ((c13 < b13 || c13 == b13) && (c13 < a13 || c13 == a13) && (c13 < d13 || c13 == d13))
 			return 2;
-		if ((d1 < b1 || d1 == b1) && (d1 < a1 || d1 == a1) && (d1 < c1 || d1 == c1))
+		if ((d13 < b13 || d13 == b13) && (d13 < a13 || d13 == a13) && (d13 < c13 || d13 == c13))
 			return 3;
 	}
 	return 0;
 }
 
+//在右图中如果找到多条直线,从中选择最靠近角点的直线
+int right_comparelines(HTuple linesbegin, HTuple linesend, int aaa)
+{
+	//aaa=1时取小的，aaa=2时取大的
+	TupleLength(linesbegin, &Num_lines);
+	if (Num_lines == 2 && aaa == 1)
+	{
+		if (linesbegin[0] > linesend[0])
+			a14 = linesbegin[0].D();
+		else
+			a14 = linesend[0].D();
+		if (linesbegin[1] > linesend[1])
+			b14 = linesbegin[1].D();
+		else
+			b14 = linesend[1].D();
+		if (b14 > a14 || b14 == a14)
+			return 1;
+		else
+			return 0;
+	}
+	if (Num_lines == 2 && aaa == 2)
+	{
+		if (linesbegin[0] < linesend[0])
+			a14 = linesbegin[0].D();
+		else
+			a14 = linesend[0].D();
+		if (linesbegin[1] < linesend[1])
+			b14 = linesbegin[1].D();
+		else
+			b14 = linesend[1].D();
+		if (b14 < a14 || b14 == a14)
+			return 1;
+		else
+			return 0;
+	}
+	if (Num_lines == 3 && aaa == 1)
+	{
+		if (linesbegin[0] > linesend[0])
+			a14 = linesbegin[0].D();
+		else
+			a14 = linesend[0].D();
+		if (linesbegin[1] > linesend[1])
+			b14 = linesbegin[1].D();
+		else
+			b14 = linesend[1].D();
+		if (linesbegin[2] > linesend[2])
+			c14 = linesbegin[2].D();
+		else
+			c14 = linesend[2].D();
+		if ((b14 > a14 || b14 == a14) && (b14 > c14 || b14 == c14))
+			return 1;
+		if ((a14 > b14 || a14 == b14) && (a14 > c14 || a14 == c14))
+			return 0;
+		if ((c14 > b14 || c14 == b14) && (c14 > a14 || c14 == a14))
+			return 2;
+	}
+	if (Num_lines == 3 && aaa == 2)
+	{
+		if (linesbegin[0] < linesend[0] || linesbegin[0] == linesend[0])
+			a14 = linesbegin[0].D();
+		else
+			a14 = linesend[0].D();
+		if (linesbegin[1] < linesend[1])
+			b14 = linesbegin[1].D();
+		else
+			b14 = linesend[1].D();
+		if (linesbegin[2] < linesend[2])
+			c14 = linesbegin[2].D();
+		else
+			c14 = linesend[2].D();
+		if ((b14 < a13 || b14 == a14) && (b14 < c14 || b14 == c14))
+			return 1;
+		if ((a14 < b14 || a14 == b14) && (a14 < c14 || a14 == c14))
+			return 0;
+		if ((c14 < b14 || c14 == b14) && (c14 < a14 || c14 == a14))
+			return 2;
+	}
+	if (Num_lines == 4 && aaa == 1)
+	{
+		if (linesbegin[0] > linesend[0])
+			a14 = linesbegin[0].D();
+		else
+			a14 = linesend[0].D();
+		if (linesbegin[1] > linesend[1])
+			b14 = linesbegin[1].D();
+		else
+			b14 = linesend[1].D();
+		if (linesbegin[2] > linesend[2])
+			c14 = linesbegin[2].D();
+		else
+			c14 = linesend[2].D();
+		if (linesbegin[3] > linesend[3])
+			d14 = linesbegin[3].D();
+		else
+			d14 = linesend[3].D();
+		if ((b14 > a14 || b14 == a14) && (b14 > c14 || b14 == c14) && (b14 > d14 || b14 == d14))
+			return 1;
+		if ((a14 > b14 || a14 == b14) && (a14 > c14 || a14 == c14) && (a14 > d14 || a14 == d14))
+			return 0;
+		if ((c14 > b14 || c14 == b14) && (c14 > a14 || c14 == a14) && (c14 > d14 || c14 == d14))
+			return 2;
+		if ((d14 > b14 || d14 == b14) && (d14 > a14 || d14 == a14) && (d14 > c14 || d14 == c14))
+			return 3;
+	}
+	if (Num_lines == 4 && aaa == 2)
+	{
+		if (linesbegin[0] < linesend[0])
+			a14 = linesbegin[0].D();
+		else
+			a14 = linesend[0].D();
+		if (linesbegin[1] < linesend[1])
+			b14 = linesbegin[1].D();
+		else
+			b14 = linesend[1].D();
+		if (linesbegin[2] < linesend[2])
+			c14 = linesbegin[2].D();
+		else
+			c14 = linesend[2].D();
+		if (linesbegin[3] < linesend[3])
+			d14 = linesbegin[3].D();
+		else
+			d14 = linesend[3].D();
+		if ((b14 < a14 || b14 == a14) && (b14 < c14 || b14 == c14) && (b14 < d14 || b14 == d14))
+			return 1;
+		if ((a14 < b14 || a14 == b14) && (a14 < c14 || a14 == c14) && (a14 < d14 || a14 == d14))
+			return 0;
+		if ((c14 < b14 || c14 == b14) && (c14 < a14 || c14 == a14) && (c14 < d14 || c14 == d14))
+			return 2;
+		if ((d14 < b14 || d14 == b14) && (d14 < a14 || d14 == a14) && (d14 < c14 || d14 == c14))
+			return 3;
+	}
+	return 0;
+}
 
 
 void CvisionDlg::OnSizing(UINT fwSide, LPRECT pRect)
@@ -1266,7 +1414,7 @@ BOOL CvisionDlg::OnHelpInfo(HELPINFO* pHelpInfo)
 void CvisionDlg::OnBnClickedVsBtnResend()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	SetTimer(3, 3000, NULL);
+	SetTimer(3, 4500, NULL);
 }
 
 
@@ -1302,6 +1450,8 @@ void CvisionDlg::ReSetTime()
 
 void CvisionDlg::OnShowLeftPic()
 {
+	if( hBmp_8_left != NULL)
+		DeleteObject(hBmp_8_left);
 	// 左侧相机图片显示
 	hBmp_8_left = (HBITMAP)::LoadImage(AfxGetInstanceHandle(), L"E://HX-master/HX/left.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 	m_vs_pic_8_left.SetBitmap(hBmp_8_left);    // 设置图片控件m_jzmPicture的位图图片为IDB_BITMAP1  
@@ -1316,6 +1466,9 @@ void CvisionDlg::OnShowLeftPic()
 	height_RowEnd_left_8 = hv_height_line_RowEnd_left_8[0].D() / scale;
 	height_ColEnd_left_8 = hv_height_line_ColEnd_left_8[0].D() / scale;
 
+
+	m_endPos_left_8_x = m_startPos_left_8_x + rect_height;
+	m_endPos_left_8_y = m_startPos_left_8_y + rect_width;
 	//更新裁剪框坐标
 	m_startPos_left_8 = { m_startPos_left_8_x ,m_startPos_left_8_y };
 	m_endPos_left_8 = { m_endPos_left_8_x , m_endPos_left_8_y };
@@ -1332,20 +1485,24 @@ void CvisionDlg::OnShowLeftPic()
 		m_width_left_8 = { width_ColBegin_left_8,width_RowBegin_left_8 };
 	else
 		m_width_left_8 = { width_ColEnd_left_8,width_RowEnd_left_8 };
-	if(height_ColBegin_left_8< height_ColEnd_left_8)
-		m_height_left_8 = { height_ColBegin_left_8 ,height_RowBegin_left_8 };
-	else
+	if(height_RowBegin_left_8< height_RowEnd_left_8)
 		m_height_left_8 = { height_ColEnd_left_8 ,height_RowEnd_left_8 };
+	else
+		m_height_left_8 = { height_ColBegin_left_8 ,height_RowBegin_left_8 };
 	dc_left_8_ptr->MoveTo(m_width_left_8);
 	dc_left_8_ptr->LineTo((int)(hv_COL_left_8.D() / scale),(int)( hv_ROW_left_8.D() /scale));
 	dc_left_8_ptr->MoveTo(m_height_left_8);
 	dc_left_8_ptr->LineTo((int)(hv_COL_left_8.D() / scale), (int)(hv_ROW_left_8.D() / scale));
+
 }
 
 
 
 void CvisionDlg::OnShowRightPic()
 {
+
+	if (hBmp_8_right != NULL)
+		DeleteObject(hBmp_8_right);
 	// 右侧相机图片显示
 	hBmp_8_right = (HBITMAP)::LoadImage(AfxGetInstanceHandle(), L"E://HX-master/HX/right.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 	m_vs_pic_8_right.SetBitmap(hBmp_8_right);    // 设置图片控件m_jzmPicture的位图图片为IDB_BITMAP1  
@@ -1361,6 +1518,8 @@ void CvisionDlg::OnShowRightPic()
 	height_ColEnd_right_8 = hv_height_line_ColEnd_right_8[0].D() / scale;
 
 	//更新裁剪框坐标
+	m_endPos_right_8_x = m_startPos_right_8_x + rect_height;
+	m_endPos_right_8_y = m_startPos_right_8_y + rect_width;
 	m_startPos_right_8 = { m_startPos_right_8_x ,m_startPos_right_8_y };
 	m_endPos_right_8 = { m_endPos_right_8_x , m_endPos_right_8_y };
 
@@ -1376,10 +1535,10 @@ void CvisionDlg::OnShowRightPic()
 		m_width_right_8 = { width_ColBegin_right_8,width_RowBegin_right_8 };
 	else
 		m_width_right_8 = { width_ColEnd_right_8,width_RowEnd_right_8 };
-	if (height_ColBegin_right_8 < height_ColEnd_right_8)
-		m_height_right_8 = { height_ColBegin_right_8 ,height_RowBegin_right_8 };
-	else
+	if (height_RowBegin_right_8 < height_RowEnd_right_8)
 		m_height_right_8 = { height_ColEnd_right_8 ,height_RowEnd_right_8 };
+	else
+		m_height_right_8 = { height_ColBegin_right_8 ,height_RowBegin_right_8 };
 	dc_right_8_ptr->MoveTo(m_width_right_8);
 	dc_right_8_ptr->LineTo((int)(hv_COL_right_8.D() / scale), (int)(hv_ROW_right_8.D() / scale));
 	dc_right_8_ptr->MoveTo(m_height_right_8);
@@ -1398,6 +1557,10 @@ void CvisionDlg::OnLeftCollectAndCompress()
 	ZoomImageSize(ho_image_left_8, &ho_ImageZoom_left_8, hv_Width / scale, hv_Height / scale, "constant");
 	//需要改成绝对路径
 	WriteImage(ho_ImageZoom_left_8, "bmp", 0, "left.bmp");
+
+
+	m_endPos_left_8_x = m_startPos_left_8_x + rect_height;
+	m_endPos_left_8_y = m_startPos_left_8_y + rect_width;
 	//添加裁剪框数据
 	hv_Row1_left_8 = scale * m_startPos_left_8_y;
 	hv_Column1_left_8 = scale * m_startPos_left_8_x;
@@ -1419,6 +1582,9 @@ void CvisionDlg::OnRightCollectAndCompress()
 	//需要改成绝对路径
 	WriteImage(ho_ImageZoom_right_8, "bmp", 0, "right.bmp");
 	//添加裁剪框数据
+	m_endPos_right_8_x = m_startPos_right_8_x + rect_height;
+	m_endPos_right_8_y = m_startPos_right_8_y + rect_width;
+
 	hv_Row1_right_8 = scale * m_startPos_right_8_y;
 	hv_Column1_right_8 = scale * m_startPos_right_8_x;
 	hv_Row2_right_8 = scale * m_endPos_right_8_y;
@@ -1444,9 +1610,9 @@ int locateleft()
 {
 	GetImageSize(ho_ImagePart_left_8, &hv_ImagePart_Width_left_8, &hv_ImagePart_Height_left_8);
 	//中值滤波减小误差
-	MedianImage(ho_ImagePart_left_8, &ho_ImagePart_median_left_8, "square", (HTuple)hv_Filter_block_radius_left_8, "mirrored");
+	MedianImage(ho_ImagePart_left_8, &ho_ImagePart_median_left_8, "square", (HTuple)hv_Filter_block_radius_8, "mirrored");
 
-	Threshold(ho_ImagePart_median_left_8, &ho_threshold_left_8, (HTuple)hv_Threshold_left_8, 255);
+	Threshold(ho_ImagePart_median_left_8, &ho_threshold_left_8, (HTuple)hv_Threshold_8, 255);
 	Connection(ho_threshold_left_8, &ho_threshold_left_8);
 	SelectShapeStd(ho_threshold_left_8, &ho_max_left_8, "max_area", 70);
 	//求凸包
@@ -1480,7 +1646,7 @@ int locateleft()
 	}
 	if (hv_width_line_Num_left_8 > 1 && hv_width_line_Num_left_8 < 5)
 	{
-		num_left = comparelines(hv_width_line_ColBegin_left_8, hv_width_line_ColEnd_left_8, flag_sec_small);
+		num_left = left_comparelines(hv_width_line_ColBegin_left_8, hv_width_line_ColEnd_left_8, flag_sec_small);
 
 		hv_width_line_RowBegin_left_8 = hv_width_line_RowBegin_left_8[num_left].D();
 		hv_width_line_ColBegin_left_8 = hv_width_line_ColBegin_left_8[num_left].D();
@@ -1513,35 +1679,33 @@ int locateleft()
 
 	if (hv_height_line_Num_left_8 > 1 && hv_height_line_Num_left_8 < 5)
 	{
-		num_left = comparelines(hv_height_line_RowBegin_left_8, hv_height_line_RowEnd_left_8, flag_sec_small);
+		num_left = left_comparelines(hv_height_line_RowBegin_left_8, hv_height_line_RowEnd_left_8, flag_sec_small);
 		hv_height_line_RowBegin_left_8 = hv_height_line_RowBegin_left_8[num_left].D();
 		hv_height_line_ColBegin_left_8 = hv_height_line_ColBegin_left_8[num_left].D();
 		hv_height_line_RowEnd_left_8 = hv_height_line_RowEnd_left_8[num_left].D();
 		hv_height_line_ColEnd_left_8 = hv_height_line_ColEnd_left_8[num_left].D();
 	}
 
-	double a1, b1, c1, a2, b2, c2, d;
-	double x1, y1, x2, y2, x3, y3, x4, y4;
-	x1 = hv_width_line_RowBegin_left_8[0].D();
-	y1 = hv_width_line_ColBegin_left_8[0].D();
-	x2 = hv_width_line_RowEnd_left_8[0].D();
-	y2 = hv_width_line_ColEnd_left_8[0].D();
+	x11 = hv_width_line_RowBegin_left_8[0].D();
+	y11 = hv_width_line_ColBegin_left_8[0].D();
+	x21 = hv_width_line_RowEnd_left_8[0].D();
+	y21 = hv_width_line_ColEnd_left_8[0].D();
 
-	x3 = hv_height_line_RowBegin_left_8[0].D();
-	y3 = hv_height_line_ColBegin_left_8[0].D();
-	x4 = hv_height_line_RowEnd_left_8[0].D();
-	y4 = hv_height_line_ColEnd_left_8[0].D();
-	a1 = y2 - y1;
-	b1 = -(x2 - x1);
-	c1 = -a1 * x1 - b1 * y1;
+	x31 = hv_height_line_RowBegin_left_8[0].D();
+	y31 = hv_height_line_ColBegin_left_8[0].D();
+	x41 = hv_height_line_RowEnd_left_8[0].D();
+	y41 = hv_height_line_ColEnd_left_8[0].D();
+	a11 = y21 - y11;
+	b11 = -(x21 - x11);
+	c11 = -a11 * x11 - b11 * y11;
 
-	a2 = y4 - y3;
-	b2 = -(x4 - x3);
-	c2 = -a2 * x3 - b2 * y3;
-	d = a1 * b2 - a2 * b1;
+	a21 = y41 - y31;
+	b21 = -(x41 - x31);
+	c21 = -a21 * x31 - b21 * y31;
+	d1 = a11 * b21 - a21 * b11;
 
-	hv_ROW_left_8 = (b1 * c2 - b2 * c1) / d;
-	hv_COL_left_8 = (a2 * c1 - a1 * c2) / d;
+	hv_ROW_left_8 = (b11 * c21 - b21 * c11) / d1;
+	hv_COL_left_8 = (a21 * c11 - a11 * c21) / d1;
 
 
 	hv_width_line_RowBegin_left_8 += hv_Row1_left_8;
@@ -1558,7 +1722,7 @@ int locateleft()
 	hv_COL_left_8 += hv_Column1_left_8;
 
 
-	flag_locate_over++;
+	//flag_locate_over++;这一句已经改到了坐标变换函数末尾
 
 	//AfxMessageBox(_T("左边相机定位结束"));
 	return 0;
@@ -1571,9 +1735,9 @@ int locateright()
 {
 	GetImageSize(ho_ImagePart_right_8, &hv_ImagePart_Width_right_8, &hv_ImagePart_Height_right_8);
 	//中值滤波减小误差
-	MedianImage(ho_ImagePart_right_8, &ho_ImagePart_median_right_8, "square", (HTuple)hv_Filter_block_radius_right_8, "mirrored");
+	MedianImage(ho_ImagePart_right_8, &ho_ImagePart_median_right_8, "square", (HTuple)hv_Filter_block_radius_8, "mirrored");
 
-	Threshold(ho_ImagePart_median_right_8, &ho_threshold_right_8, (HTuple)hv_Threshold_right_8, 255);
+	Threshold(ho_ImagePart_median_right_8, &ho_threshold_right_8, (HTuple)hv_Threshold_8, 255);
 	Connection(ho_threshold_right_8, &ho_threshold_right_8);
 	SelectShapeStd(ho_threshold_right_8, &ho_max_right_8, "max_area", 70);
 	//求凸包
@@ -1607,7 +1771,7 @@ int locateright()
 	}
 	if (hv_width_line_Num_right_8 < 5 && hv_width_line_Num_right_8 > 1)
 	{
-		num_right = comparelines(hv_width_line_ColEnd_right_8, hv_width_line_ColBegin_right_8, flag_sec_big);
+		num_right = right_comparelines(hv_width_line_ColEnd_right_8, hv_width_line_ColBegin_right_8, flag_sec_big);
 		hv_width_line_RowBegin_right_8 = hv_width_line_RowBegin_right_8[num_right].D();
 		hv_width_line_ColBegin_right_8 = hv_width_line_ColBegin_right_8[num_right].D();
 		hv_width_line_RowEnd_right_8 = hv_width_line_RowEnd_right_8[num_right].D();
@@ -1636,7 +1800,7 @@ int locateright()
 	}
 	if (hv_height_line_Num_right_8 > 1 && hv_height_line_Num_right_8 < 5)
 	{
-		num_right = comparelines(hv_height_line_RowBegin_right_8, hv_height_line_RowEnd_right_8, flag_sec_small);
+		num_right = right_comparelines(hv_height_line_RowBegin_right_8, hv_height_line_RowEnd_right_8, flag_sec_small);
 		hv_height_line_RowBegin_right_8 = hv_height_line_RowBegin_right_8[num_right].D();
 		hv_height_line_ColBegin_right_8 = hv_height_line_ColBegin_right_8[num_right].D();
 		hv_height_line_RowEnd_right_8 = hv_height_line_RowEnd_right_8[num_right].D();
@@ -1644,34 +1808,32 @@ int locateright()
 	}
 
 
-	double a1, b1, c1, a2, b2, c2, d;
-	double x1, y1, x2, y2, x3, y3, x4, y4;
-	x1 = hv_width_line_RowBegin_right_8[0].D();
-	y1 = hv_width_line_ColBegin_right_8[0].D();
-	x2 = hv_width_line_RowEnd_right_8[0].D();
-	y2 = hv_width_line_ColEnd_right_8[0].D();
+	x12 = hv_width_line_RowBegin_right_8[0].D();
+	y12 = hv_width_line_ColBegin_right_8[0].D();
+	x22 = hv_width_line_RowEnd_right_8[0].D();
+	y22 = hv_width_line_ColEnd_right_8[0].D();
 
-	x3 = hv_height_line_RowBegin_right_8[0].D();
-	y3 = hv_height_line_ColBegin_right_8[0].D();
-	x4 = hv_height_line_RowEnd_right_8[0].D();
-	y4 = hv_height_line_ColEnd_right_8[0].D();
-	a1 = y2 - y1;
-	b1 = -(x2 - x1);
-	c1 = -a1 * x1 - b1 * y1;
+	x32 = hv_height_line_RowBegin_right_8[0].D();
+	y32 = hv_height_line_ColBegin_right_8[0].D();
+	x42 = hv_height_line_RowEnd_right_8[0].D();
+	y42 = hv_height_line_ColEnd_right_8[0].D();
+	a12 = y22 - y12;
+	b12 = -(x22 - x12);
+	c12 = -a12 * x12 - b12 * y12;
 
-	a2 = y4 - y3;
-	b2 = -(x4 - x3);
-	c2 = -a2 * x3 - b2 * y3;
-	d = a1 * b2 - a2 * b1;
-	if (d == 0)
+	a22 = y42 - y32;
+	b22 = -(x42 - x32);
+	c22 = -a22 * x32 - b22 * y32;
+	d2 = a12 * b22 - a22 * b12;
+	if (d2 == 0)
 		;
 	else
-		if (d > 0)
+		if (d2 > 0)
 			;
 		else
 			;
-	hv_ROW_right_8 = (b1 * c2 - b2 * c1) / d;
-	hv_COL_right_8 = (a2 * c1 - a1 * c2) / d;
+	hv_ROW_right_8 = (b12 * c22 - b22 * c12) / d2;
+	hv_COL_right_8 = (a22 * c12 - a12 * c22) / d2;
 
 	hv_width_line_RowBegin_right_8 += hv_Row1_right_8;
 	hv_height_line_RowBegin_right_8 += hv_Row1_right_8;
@@ -1686,7 +1848,7 @@ int locateright()
 	hv_ROW_right_8 += hv_Row1_right_8;
 	hv_COL_right_8 += hv_Column1_right_8;
 	//将直角边端点写入全局变量中
-	flag_locate_over++;
+	//flag_locate_over++;这一句改到坐标变换末尾
 	
 	//AfxMessageBox(_T("右边相机定位结束"));
 	return 0;
@@ -1724,17 +1886,19 @@ void CvisionDlg::OnBnClickedButton1()
 
 	OnLeftCollectAndCompress();
 	OnRightCollectAndCompress();
+
 	locateleft();
 	locateright();
+
 	OnShowLeftPic();
 	OnShowRightPic();
-
-	if (flag_locate_over == 2)
+	coordinate_transformation_left();
+	coordinate_transformation_right();
+	if (flag_locate_left_over == 1 && flag_locate_right_over == 1)
 	{
-		coordinate_transformation_left();
-		coordinate_transformation_right();
 		OnShowList();
-		flag_locate_over = 0;
+		flag_locate_left_over = 0;
+		flag_locate_right_over = 0;
 		OnInitLocateData();
 	}
 	test_times++;
@@ -1798,4 +1962,122 @@ void CvisionDlg::OnInitLocateData()
 	hv_height_line_ColBegin_right_8 = 0;
 	hv_height_line_RowEnd_right_8 = 0;
 	hv_height_line_ColEnd_right_8 = 0;
+}
+
+
+void CvisionDlg::OnAllLeftLocate()
+{
+	// 此函数实现左相机采图,读图,定位,显示,坐标转换的全功能
+
+	try
+	{
+		//发送软触发指令
+		leftCam->m_frame_ready_ = false;
+		leftCam->ObjFeatureControlPtr->GetCommandFeature("TriggerSoftware")->Execute();
+	}
+	catch (CGalaxyException& e)
+	{
+		MessageBox(CString(e.what()));
+		return;
+	}
+	catch (std::exception& e)
+	{
+		MessageBox(CString(e.what()));
+		return;
+	}
+	while (leftCam->m_frame_ready_ == false)
+	{
+		//等待采图完成
+	}
+	OnLeftCollectAndCompress();
+	locateleft();
+
+	OnShowLeftPic();
+	coordinate_transformation_left();
+	flag_locate_left_over = 1;
+	if (flag_locate_left_over == 1 && flag_locate_right_over == 1)
+	{
+		flag_collect_success = false;
+		flag_locate_left_over = 0;
+		flag_locate_right_over = 0;
+		OnShowList();
+
+		//左右相机开始标志位置零
+		flag_left_locate_begin = 0;
+		flag_right_locate_begin = 0;
+		//将定位数据传给数据库
+		vs_x = ROW_LEFT_8;
+		vs_y = COL_LEFT_8;
+		vs_theta = ANGLE;
+		//将定位数据传给PLC
+		Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X);
+		Result[1] = (int)(COL_LEFT_8 * 10 - BIAO_Y);
+		Result[2] = (int)(ANGLE * 100000);
+		//将所有定位数据置零
+		OnInitLocateData();
+	}
+
+}
+
+void CvisionDlg::OnAllRightLocate()
+{
+	// 此函数实现右相机采图,读图,定位,显示,坐标转换的全功能
+
+	try
+	{
+		//发送软触发指令
+		rightCam->m_frame_ready_ = false;
+		rightCam->ObjFeatureControlPtr->GetCommandFeature("TriggerSoftware")->Execute();
+	}
+	catch (CGalaxyException& e)
+	{
+		MessageBox(CString(e.what()));
+		return;
+	}
+	catch (std::exception& e)
+	{
+		MessageBox(CString(e.what()));
+		return;
+	}
+	while ( rightCam->m_frame_ready_ == false)
+	{
+		//等待采图完成
+	}
+	OnRightCollectAndCompress();
+	locateright();
+	
+
+	OnShowRightPic();
+	coordinate_transformation_right();
+	//flag_locate_over++标志右相机坐标转换完成
+	flag_locate_right_over = 1;
+	if (flag_locate_left_over == 1 && flag_locate_right_over == 1)
+	{
+		flag_collect_success = false;
+		flag_locate_left_over = 0;
+		flag_locate_right_over = 0;
+		//左右相机开始标志位置零
+		flag_left_locate_begin = 0;
+		flag_right_locate_begin = 0;
+
+		OnShowList();
+		//将定位数据传给数据库
+		vs_x = ROW_LEFT_8;
+		vs_y = COL_LEFT_8;
+		vs_theta = ANGLE;
+		//将定位数据传给PLC
+		Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X);
+		Result[1] = (int)(COL_LEFT_8 * 10 - BIAO_Y);
+		Result[2] = (int)(ANGLE * 100000);
+		//将所有定位数据置零
+		OnInitLocateData();
+	}
+	
+}
+
+
+void CvisionDlg::OnBnClickedButton2()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	flag_collect_success = true;
 }

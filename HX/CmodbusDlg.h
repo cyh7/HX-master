@@ -159,4 +159,13 @@ public:
 	CMyButton m_mod_btn_timesend;
 	// 位操作
 	void BitManipul(int temp);
+	
+	int m_mod_edit_threshold;
+	int m_mod_edit_filter;
+	int m_mod_edit_rect_width;
+	int m_mod_edit_height;
+	int m_mod_edit_rect_topleft_x;
+	int m_mod_edit_rect_topleft_y;
+	int m_mod_edit_right_rect_topleft_x;
+	int m_mod_edit_right_rect_topleft_y;
 };
