@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include "CamCon.h"
-
+#define DATA_FOLDER "D://HX-master/HX-master/HX/"
 
 int CamCon::init_all_cam(vector<shared_ptr<SingleCam>>& cam_vec)
 {
@@ -17,7 +17,7 @@ int CamCon::init_all_cam(vector<shared_ptr<SingleCam>>& cam_vec)
 		const size_t totalDeviceNum = vectorDeviceInfo.size();
 		CString a;
 		a.Format(_T("%d 个设备"), totalDeviceNum);
-		AfxMessageBox(a);
+		//AfxMessageBox(a);
 
 		if (totalDeviceNum == 0) // 完全搜不到设备
 		{
@@ -42,7 +42,7 @@ int CamCon::init_all_cam(vector<shared_ptr<SingleCam>>& cam_vec)
 		fopen_s(&fp, "ROI.ini", "rb");
 		if (fp != NULL)
 		{
-			AfxMessageBox(L"read an ini");
+			//AfxMessageBox(L"read an ini");
 			fread(&ROI_pair, sizeof(ROI_pair), 1, fp);
 			leftROI = ROI_pair.first;
 			rightROI = ROI_pair.second;
@@ -90,7 +90,7 @@ int CamCon::init_all_cam(vector<shared_ptr<SingleCam>>& cam_vec)
 	{
 		cout << "错误码: " << e.GetErrorCode() << endl;
 		cout << "错误描述信息: " << e.what() << endl;
-		AfxMessageBox(CString(e.what()));
+		//AfxMessageBox(CString(e.what()));
 		//相机初始化出现问题，提示是否选择是否进行相机重连
 		//1.检查电缆
 		//2.进行复位
@@ -126,7 +126,7 @@ int CamCon::init_all_cam(vector<shared_ptr<SingleCam>>& cam_vec)
 
 		}
 
-		AfxMessageBox(L"发现掉线相机");
+		//AfxMessageBox(L"发现掉线相机");
 		init_all_cam(cam_vec);
 	}
 	catch (std::exception& e)
@@ -136,14 +136,14 @@ int CamCon::init_all_cam(vector<shared_ptr<SingleCam>>& cam_vec)
 		if (string(e.what()) == "No Device Detected") //完全没有检测到任何相机
 		{
 			//执行相应的措施，比如提供一个按钮再次执行init_all_cam
-			AfxMessageBox(CString(e.what()));
+			//AfxMessageBox(CString(e.what()));
 			//请检查接电，网线连接是否正常，然后点击“连接相机按钮”
 			//如果多次连接失败，请尝试使用复位相机按钮
 		}
 		else if (string(e.what()) == "Found a new Cam") //��⵽�����
 		{
 			//ִ����Ӧ�Ĵ�ʩ�������ṩһ����ť�ٴ�ִ��init_all_cam
-			AfxMessageBox(CString(e.what()));
+			//AfxMessageBox(CString(e.what()));
 			//����ӵ磬���������Ƿ�������Ȼ���������������ť��
 			//����������ʧ�ܣ��볢��ʹ�ø�λ�����ť
 		}
@@ -273,8 +273,8 @@ SingleCam::SingleCam(gxstring m_serialNum, const char* windowname, const cv::Rec
 		{
 			ObjDevicePtr->Close();
 		}
-		AfxMessageBox(L"error open Device");
-		AfxMessageBox(CString(e.what()));
+		//AfxMessageBox(L"error open Device");
+		//AfxMessageBox(CString(e.what()));
 		//提示处理函数注册失败，流和设备已经关闭
 	}
 	catch (std::exception& e)
@@ -370,7 +370,7 @@ void SingleCam::SetAcqusition_Continuous()
 	}
 	catch (CGalaxyException& e)
 	{
-		AfxMessageBox(CString(e.what()));
+		//AfxMessageBox(CString(e.what()));
 	}
 
 }
@@ -604,26 +604,40 @@ void CSampleCaptureEventHandler::DoOnImageCaptured(CImageDataPointer& objImageDa
 	{
 		//继续采集
 		Cam->src.create(objImageDataPointer->GetHeight(), objImageDataPointer->GetWidth(), CV_8UC3);
-		void* pRGB24Buffer = NULL;
-		//假设原始数据是BayerRG8图像
-		pRGB24Buffer = objImageDataPointer->ConvertToRGB24(GX_BIT_0_7, GX_RAW2RGB_NEIGHBOUR, true);
-		memcpy(Cam->src.data, pRGB24Buffer, (objImageDataPointer->GetHeight()) * (objImageDataPointer->GetWidth()) * 3);
-		cvtColor(Cam->src, Cam->src, COLOR_BGR2GRAY);
-		cv::flip(Cam->src, Cam->src, ROTATE_90_CLOCKWISE);
+		void* p_gray = NULL;
 
-		Mat img;
-		resize(Cam->src, img, Size(Cam->src.cols / AS_RATIO, Cam->src.rows / AS_RATIO));
-
-		cv::Rect& roi = Cam->ROI;//我们直接把类带进来，得劲，与其放一个成员指针，何不直接来整个类？
-
-		cv::Rect roi_resized(roi.x / 10, roi.y / 10, roi.width / 10, roi.height / 10);
-
-		rectangle(img, roi_resized, Scalar(0, 0, 255), 8);
-		cv::imwrite(Cam->GetShowWindow() + string(".bmp"), Cam->src);
-		cv::waitKey(1);
-		//帧获取完毕
+		//p_gray = objImageDataPointer->ConvertToRGB24(GX_BIT_0_7, GX_RAW2RGB_ADAPTIVE, true);
+		p_gray = objImageDataPointer->GetBuffer();
+		Cam->src.create(Size(objImageDataPointer->GetWidth(), objImageDataPointer->GetHeight()), CV_8UC1);
+		memcpy(Cam->src.data, p_gray, (objImageDataPointer->GetHeight()) * (objImageDataPointer->GetWidth()));
+		string name = DATA_FOLDER + Cam->GetShowWindow() + string(".bmp");
+		cv::imwrite(name, Cam->src);
 		Cam->m_frame_ready_ = true;
-		//cout << "帧数：" << objImageDataPointer->GetFrameID() << endl;
+
+		////继续采集
+		//Cam->src.create(objImageDataPointer->GetHeight(), objImageDataPointer->GetWidth(), CV_8UC1);
+		//void* pRGB24Buffer = NULL;
+		////假设原始数据是BayerRG8图像
+		////pRGB24Buffer = objImageDataPointer->ConvertToRGB24(GX_BIT_0_7, GX_RAW2RGB_NEIGHBOUR, true);
+		//memcpy(Cam->src.data, pRGB24Buffer, (objImageDataPointer->GetHeight()) * (objImageDataPointer->GetWidth()) * 3);
+		//
+		////取消三通道转单通道
+		////cvtColor(Cam->src, Cam->src, COLOR_BGR2GRAY);
+		////cv::flip(Cam->src, Cam->src, ROTATE_90_CLOCKWISE);
+
+		////Mat img;
+		////resize(Cam->src, img, Size(Cam->src.cols / AS_RATIO, Cam->src.rows / AS_RATIO));
+
+		////cv::Rect& roi = Cam->ROI;//我们直接把类带进来，得劲，与其放一个成员指针，何不直接来整个类？
+
+		////cv::Rect roi_resized(roi.x / 10, roi.y / 10, roi.width / 10, roi.height / 10);
+
+		////rectangle(img, roi_resized, Scalar(0, 0, 255), 8);
+		//cv::imwrite(Cam->GetShowWindow() + string(".bmp"), Cam->src);
+		//cv::waitKey(1);
+		////帧获取完毕
+		//Cam->m_frame_ready_ = true;
+		////cout << "帧数：" << objImageDataPointer->GetFrameID() << endl;
 	}
 
 

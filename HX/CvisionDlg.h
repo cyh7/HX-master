@@ -3,6 +3,7 @@
 #include "CLayout.h"
 #include "CMyButton.h"
 
+#include "CamCon.h"//相机控制，必须第一引入，避免前面出现 using namespace cv;
 extern bool SendDone;
 //把时间全局给插入数据库用
 extern CString LastTime;
@@ -18,6 +19,14 @@ extern int m_startPos_left_8_y;
 extern int m_startPos_left_8_x;
 extern int rect_width;
 extern int rect_height;
+extern int rect_height;
+
+
+extern int left_baoguang_time;
+extern int right_baoguang_time;
+//左右相机智能指针
+extern shared_ptr<SingleCam> leftCam;
+extern shared_ptr<SingleCam> rightCam;
 
 extern int scale;
 
@@ -102,18 +111,27 @@ public:
 	CClientDC dc_right_8;*/
 	std::shared_ptr<CClientDC> dc_right_8_ptr;
 	CPen pen_left_8;
-	afx_msg void OnBnClickedButton1();
 	CListCtrl m_vs_list_location_data;
 
 	CString m_vs_edit_type;
 	DWORD m_vs_edit_batch;
 	
 
-	void OnShowList();
-	int m_test_locate_num;
-	int m_locate_test_wrong;
+	//void OnShowList();
+	HICON m_vs_hIconRed;
+	HICON m_vs_hIconGreen;
+	HICON m_vs_hIconYellow;
+	HICON m_vs_hIconGray;
+	
 	void OnInitLocateData();
 	void OnAllLeftLocate();
 	void OnAllRightLocate();
-	afx_msg void OnBnClickedButton2();
+	
+	CStatic m_vs_pic_camstatus;
+	CStatic m_vs_pic_locate;
+	// 状态改变监测
+	void StatusChange();
+	CStatic m_vs_pic_plc;
+	CStatic m_vs_pic_glue;
+	CStatic m_vs_pic_stop;
 };

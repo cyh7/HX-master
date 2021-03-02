@@ -7,12 +7,31 @@
 #include "layoutinitVision.h"
 #include <cstdio>
 
-#include "CamCon.h"//相机控制，必须第一引入，避免前面出现 using namespace cv;
+#include <iostream>
+#include "shlwapi.h"
+
 #include "opencv_include.h"
 #include "HalconCpp.h"
 using namespace HalconCpp;
-#define DATA_FOLDER "E://HX-master/HX/"
-#define DATA_FOLDERs "E:/HX-master/HX/"
+#define DATA_FOLDER "D://HX-master/HX-master/HX/"
+#define DATA_FOLDERs "D:/HX-master/HX-master/HX/"
+
+
+//打开相机成功标志位
+bool flag_open_cam = false;
+
+//设置左右相机曝光时间
+int left_baoguang_time = 160000;
+int right_baoguang_time = 160000;
+
+//CWinThread * hthreadRightLocation;
+//CWinThread * hthreadLeftLocation;
+//定义定位失败次数,定位失败时累加，locate_times_error==2时发送错误信息给PLC
+int locate_times_error = 0;
+//左相机定位失败标志位
+bool flag_left_locate_error = false;
+//右相机定位失败标志位
+bool flag_right_locate_error = false;
 
 HTuple Num_lines = 0;
 int flag_sec_big = 1;
@@ -23,8 +42,8 @@ int num_right;
 //传给PLC的定位数据
 int Result[3] = {0,0,0};
 //和PLC约定的定标位置
-int BIAO_X;
-int BIAO_Y;
+int BIAO_X=700;
+int BIAO_Y=-450;
 
 
 //左右相机智能指针
@@ -49,6 +68,10 @@ CString Row_Left;
 CString Column_Right;
 CString Row_Right;
 CString Angle;
+
+//定义左右相机的显示图片
+cv::Mat img_left;
+cv::Mat img_right;
 
 //定义左右相机的手眼标定转换矩阵
 cv::Mat cam_matrix_left, r_left, t_left;
@@ -96,6 +119,7 @@ HTuple hv_Width = 5496;
 HTuple hv_Height = 3672;
 //定义图片显示的压缩比例
 int scale = 9;
+
 //左相机原图中的裁剪框坐标，用于实际图片裁剪
 HTuple hv_Row1_left_8;
 HTuple hv_Column1_left_8;
@@ -127,6 +151,20 @@ int m_endPos_right_8_y = 360;
 int m_endPos_right_8_x = 480;
 
 
+CString str;
+long t111 = 0;
+long t211 = 0;
+
+long left_cut_pic_begin_time = 0;
+long right_cut_pic_begin_time = 0;
+
+long left_loacate_begin_time = 0;
+long right_loacate_begin_time = 0;
+
+long left_loacate_over_time = 0;
+long right_loacate_over_time = 0;
+
+long double_thread_time = 0;
 
 HObject ho_image_right_8;
 HObject ho_ImageZoom_right_8;
@@ -344,23 +382,27 @@ UINT ThreadLeftLocation(LPVOID param)
 {
 	CvisionDlg* pcollectdlg = CvisionDlg::pVisiondlg;
 	
-	while (1)
+	while (!exitFlag)
 	{
-		//long t1,t2;
-		//t1 = GetTickCount64();
 		//CString str;
+		//long t1,t2;
+		////t1 = TimeGetTime();
+		t1 = GetTickCount64();
 
-		if (flag_collect_success == true && flag_left_locate_begin == 0)
+		//if (flag_collect_success == true && flag_left_locate_begin == 0)
+		//1.24晚21.14联调
+		if (ArriveFlag == true && flag_left_locate_begin == 0)
 		{
 			flag_left_locate_begin = 1;
 			pcollectdlg->OnAllLeftLocate();
 
-		}
-		//t2 = GetTickCount64();
-		//str.Format(L"time:%dms", t2 - t1);
-		//AfxMessageBox(str);
-		
+		}/*
+		t2 = GetTickCount64();
+		str.Format(L" left time:%dms", t2 - t1);
+		AfxMessageBox(str);*/
+		//Sleep(100);
 	}
+	//AfxEndThread(0);
 	return 0;
 }
 
@@ -368,16 +410,25 @@ UINT ThreadRightLocation(LPVOID param)
 {
 	CvisionDlg* pcollectdlg = CvisionDlg::pVisiondlg;
 
-	while (1)
+	while (!exitFlag)
 	{
-		if (flag_collect_success == true && flag_right_locate_begin==0)
+	//	CString str;
+	//	long t1, t2;
+	//	//t1 = TimeGetTime();
+	//	t1 = GetTickCount64();
+
+		if (ArriveFlag == true && flag_right_locate_begin==0)
 		{
+			
 			flag_right_locate_begin = 1;
 			pcollectdlg->OnAllRightLocate();
 		}
-
-
+		/*t2 = GetTickCount64();
+		str.Format(L" right time:%dms", t2 - t1);
+		AfxMessageBox(str);*/
+		//Sleep(100);
 	}
+	//AfxEndThread(0);
 	return 0;
 }
 
@@ -386,11 +437,9 @@ UINT ThreadRightLocation(LPVOID param)
 IMPLEMENT_DYNAMIC(CvisionDlg, CDialogEx)
 
 CvisionDlg::CvisionDlg(CWnd* pParent /*=nullptr*/)
-	: CDialogEx(IDD_VISION, pParent), pen_left_8(PS_SOLID, 2, RGB(255, 0, 0))
+	: CDialogEx(IDD_VISION, pParent), pen_left_8(PS_SOLID, 3, RGB(255, 0, 0))
 	, m_vs_edit_type(_T(""))
 	, m_vs_edit_batch(0)
-	, m_test_locate_num(0)
-	, m_locate_test_wrong(0)
 {
 	
 }
@@ -398,17 +447,6 @@ CvisionDlg::CvisionDlg(CWnd* pParent /*=nullptr*/)
 CvisionDlg::~CvisionDlg()
 {
 	
-	DeleteObject(hBmp_8_left);
-	DeleteObject(bitmap_8_left);
-	DeleteObject(hBmp_8_right);
-	DeleteObject(bitmap_8_right);
-	//DeleteObject(ho_image_left_8);
-	//DeleteObject(ho_image_right_8);
-	//HObject ho_image_left_8;
-	//HObject ho_image_right_8;
-	//HObject ho_ImageZoom_left_8;
-	//HObject ho_ImageZoom_right_8;
-	//HObject ho_ImagePart_left_8;//定义裁剪后的左相机图片
 }
 
 void CvisionDlg::DoDataExchange(CDataExchange* pDX)
@@ -423,11 +461,14 @@ void CvisionDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_VS_BTN_RESEND, m_vs_btn_resend);
 	DDX_Control(pDX, IDC_VS_8_LEFT_PIC, m_vs_pic_8_left);
 	DDX_Control(pDX, IDC_VS_8_RIGHT_PIC, m_vs_pic_8_right);
-	DDX_Control(pDX, IDC_VS_LIST_LOCATE, m_vs_list_location_data);
 	DDX_Text(pDX, IDC_VS_EDIT_TYPE, m_vs_edit_type);
 	DDX_Text(pDX, IDC_VS_EDIT_BATCH, m_vs_edit_batch);
-	DDX_Text(pDX, IDC_VS_EDIT_TEST1, m_test_locate_num);
-	DDX_Text(pDX, IDC_VS_EDIT_TEST2, m_locate_test_wrong);
+
+	DDX_Control(pDX, IDC_VS_PIC_CAMSTATUS, m_vs_pic_camstatus);
+	DDX_Control(pDX, IDC_VS_PIC_LOCATE, m_vs_pic_locate);
+	DDX_Control(pDX, IDC_VS_PIC_PLC, m_vs_pic_plc);
+	DDX_Control(pDX, IDC_VS_PIC_GLUE2, m_vs_pic_glue);
+	DDX_Control(pDX, IDC_VS_PIC_STOP2, m_vs_pic_stop);
 }
 
 
@@ -444,9 +485,9 @@ BEGIN_MESSAGE_MAP(CvisionDlg, CDialogEx)
 	ON_WM_HELPINFO()
 	ON_BN_CLICKED(IDC_VIS_BTN_OPMON, &CvisionDlg::OnBnClickedVisBtnOpmon)
 	ON_BN_CLICKED(IDC_VS_BTN_RESEND, &CvisionDlg::OnBnClickedVsBtnResend)
-	ON_BN_CLICKED(IDC_BUTTON1, &CvisionDlg::OnBnClickedButton1)
 	
-	ON_BN_CLICKED(IDC_BUTTON2, &CvisionDlg::OnBnClickedButton2)
+	
+	ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 
@@ -460,7 +501,11 @@ BOOL CvisionDlg::OnInitDialog()
 	pVisiondlg = this;
 	//ModifyStyle(WS_CAPTION, 0, 0);  // 如果只是要普通的全屏，不想去掉标题栏，就不用第一个语句
 	//SendMessage(WM_SYSCOMMAND, SC_MAXIMIZE, 0);
-
+	m_vs_hIconRed = (HICON)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDI_RED), IMAGE_ICON, 40, 40, LR_DEFAULTCOLOR);
+	//这里还没修改图片
+	m_vs_hIconGreen = (HICON)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDI_GREEN), IMAGE_ICON, 40, 40, LR_DEFAULTCOLOR);
+	m_vs_hIconYellow = (HICON)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDI_YELLOW), IMAGE_ICON, 40, 40, LR_DEFAULTCOLOR);
+	m_vs_hIconGray = (HICON)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDI_GRAY), IMAGE_ICON, 40, 40, LR_DEFAULTCOLOR);
 	//按钮绘制
 	{
 		//将按钮修改为BS_OWNERDRAW风格,允许button的采用自绘模式
@@ -562,12 +607,24 @@ BOOL CvisionDlg::OnInitDialog()
 			_T("微软雅黑"));       // lpszFac，字体
 		GetDlgItem(IDC_VS_STATIC_TYPE)->SetFont(&f_vs_name, false);
 		GetDlgItem(IDC_VS_STATIC_BATCH)->SetFont(&f_vs_name, false);
+		GetDlgItem(IDC_VS_STATIC_CAMSTATUS)->SetFont(&f_vs_name, false);
+		GetDlgItem(IDC_VS_STATIC_LOCATE)->SetFont(&f_vs_name, false);
+		GetDlgItem(IDC_VS_STATIC_PLC)->SetFont(&f_vs_name, false);
+		GetDlgItem(IDC_VS_STATIC_GLUE)->SetFont(&f_vs_name, false);
+		GetDlgItem(IDC_VS_STATIC_STOP)->SetFont(&f_vs_name, false);
 	}
 	
 	
 
 	InitLayoutVision(m_layoutVision, this);
 	m_Brush.CreateSolidBrush(RGB(240, 240, 220));
+
+	
+	
+	/*m_vs_pic_plc.SetIcon(m_vs_hIconGray);
+	m_vs_pic_glue.SetIcon(m_vs_hIconGray);
+	m_vs_pic_stop.SetIcon(m_vs_hIconGray);*/
+
 	//全屏幕操作
 	{
 		WINDOWPLACEMENT m_struOldWndpl;
@@ -612,15 +669,13 @@ BOOL CvisionDlg::OnInitDialog()
 	pdlg->OnBnClickedButtonOpen();
 
 	//SetTimer(1, 100, NULL);
+	m_vs_pic_camstatus.SetIcon(m_vs_hIconGray);
+	m_vs_pic_locate.SetIcon(m_vs_hIconGray);
+	m_vs_pic_plc.SetIcon(m_vs_hIconGray);
+	m_vs_pic_glue.SetIcon(m_vs_hIconGray);
+	m_vs_pic_stop.SetIcon(m_vs_hIconGray);
 
-	//定位数据列表初始化
-	m_vs_list_location_data.InsertColumn(0, _T("左行坐标"), LVCFMT_CENTER, 120);
-	m_vs_list_location_data.InsertColumn(1, _T("左列坐标"), LVCFMT_CENTER, 120);
-	m_vs_list_location_data.InsertColumn(2, _T("右行坐标"), LVCFMT_CENTER, 120);
-	m_vs_list_location_data.InsertColumn(3, _T("右列坐标"), LVCFMT_CENTER, 120);
-	m_vs_list_location_data.InsertColumn(4, _T("倾角"), LVCFMT_CENTER, 120);
 	
-
 	//初始化相机驱动库
 	CAMVEC();
 	//扫描总线上所有的相机，这里会保证一定能搜到相机
@@ -641,6 +696,11 @@ BOOL CvisionDlg::OnInitDialog()
 		//设置软触发模式
 		leftCam->SetAcqusition_SoftwareTrigger();
 		rightCam->SetAcqusition_SoftwareTrigger();
+		//设置曝光时间
+		leftCam->ObjFeatureControlPtr->GetFloatFeature("ExposureTime")->SetValue(left_baoguang_time);
+		rightCam->ObjFeatureControlPtr->GetFloatFeature("ExposureTime")->SetValue(right_baoguang_time);
+		flag_open_cam = true;
+
 	}
 	//读取左相机标定文件
 	filename = DATA_FOLDER + string("24_left_cam_calib.xml");
@@ -662,8 +722,8 @@ BOOL CvisionDlg::OnInitDialog()
 	dc_left_8_ptr = shared_ptr<CClientDC>(new CClientDC(GetDlgItem(IDC_VS_8_LEFT_PIC)));
 	dc_right_8_ptr = shared_ptr<CClientDC>(new CClientDC(GetDlgItem(IDC_VS_8_RIGHT_PIC)));
 	
-	HANDLE hthreadRightLocation = AfxBeginThread(ThreadRightLocation, this, THREAD_PRIORITY_NORMAL);
-	HANDLE hthreadLeftLocation = AfxBeginThread(ThreadLeftLocation, this, THREAD_PRIORITY_NORMAL);
+	HANDLE hthreadRightLocation = AfxBeginThread(ThreadRightLocation, this, THREAD_PRIORITY_HIGHEST);
+	HANDLE hthreadLeftLocation = AfxBeginThread(ThreadLeftLocation, this, THREAD_PRIORITY_HIGHEST);
 	
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
@@ -939,12 +999,11 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 					if (SendDone == false)
 					{
 						KillTimer(1); //先终止该定时器，进行视觉处理
-
-						
 					}
 				}
 
 			}
+			StatusChange();
 			break;
 		}
 		case 2:
@@ -970,6 +1029,7 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 					//发送完毕 发送数清0
 					KillTimer(2);
 					SendDone = true;
+					insertdata = 0;
 					SendOnce_Vision = true;
 					SendData(1, 73, 21573);
 					LocVisionNum = 0;
@@ -1016,11 +1076,16 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 		}
 		case 3:
 		{
-			flag_collect_success = true;
+			ArriveFlag = true;
 
-			m_test_locate_num = test_times;
+			//测试执行时间
+			t111 = 0;
+			
+			t111 = GetTickCount64();
+
+			
 			//backboard背板型号
-			m_locate_test_wrong = wrong_times;
+			
 			UpdateData(FALSE);
 
 			test_times++;
@@ -1414,7 +1479,7 @@ BOOL CvisionDlg::OnHelpInfo(HELPINFO* pHelpInfo)
 void CvisionDlg::OnBnClickedVsBtnResend()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	SetTimer(3, 4500, NULL);
+	SetTimer(3, 10000, NULL);
 }
 
 
@@ -1432,6 +1497,7 @@ void CvisionDlg::KillTime1()
 void CvisionDlg::ReSetTime()
 {
 	// TODO: 在此处添加实现代码.
+	Sleep(50);
 	DisconnectNum = 0;
 	SendOnce = true;
 	SendOnce_Vision = true;
@@ -1453,19 +1519,10 @@ void CvisionDlg::OnShowLeftPic()
 	if( hBmp_8_left != NULL)
 		DeleteObject(hBmp_8_left);
 	// 左侧相机图片显示
-	hBmp_8_left = (HBITMAP)::LoadImage(AfxGetInstanceHandle(), L"E://HX-master/HX/left.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+	hBmp_8_left = (HBITMAP)::LoadImage(AfxGetInstanceHandle(), L"D://HX-master/HX-master/HX/left.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 	m_vs_pic_8_left.SetBitmap(hBmp_8_left);    // 设置图片控件m_jzmPicture的位图图片为IDB_BITMAP1  
 
-	width_RowBegin_left_8 = hv_width_line_RowBegin_left_8[0].D() / scale;
-	width_ColBegin_left_8 = hv_width_line_ColBegin_left_8[0].D() / scale;
-	width_RowEnd_left_8 = hv_width_line_RowEnd_left_8[0].D() / scale;
-	width_ColEnd_left_8 = hv_width_line_ColEnd_left_8[0].D() / scale;
-
-	height_RowBegin_left_8 = hv_height_line_RowBegin_left_8[0].D() / scale;
-	height_ColBegin_left_8 = hv_height_line_ColBegin_left_8[0].D() / scale;
-	height_RowEnd_left_8 = hv_height_line_RowEnd_left_8[0].D() / scale;
-	height_ColEnd_left_8 = hv_height_line_ColEnd_left_8[0].D() / scale;
-
+	
 
 	m_endPos_left_8_x = m_startPos_left_8_x + rect_height;
 	m_endPos_left_8_y = m_startPos_left_8_y + rect_width;
@@ -1480,20 +1537,34 @@ void CvisionDlg::OnShowLeftPic()
 	dc_left_8_ptr->LineTo(m_endPos_left_8_x, m_startPos_left_8_y);
 	dc_left_8_ptr->LineTo(m_startPos_left_8_x, m_startPos_left_8_y);
 
-	//更新左相机定位直线坐标
-	if(width_ColBegin_left_8> width_ColEnd_left_8)
-		m_width_left_8 = { width_ColBegin_left_8,width_RowBegin_left_8 };
-	else
-		m_width_left_8 = { width_ColEnd_left_8,width_RowEnd_left_8 };
-	if(height_RowBegin_left_8< height_RowEnd_left_8)
-		m_height_left_8 = { height_ColEnd_left_8 ,height_RowEnd_left_8 };
-	else
-		m_height_left_8 = { height_ColBegin_left_8 ,height_RowBegin_left_8 };
-	dc_left_8_ptr->MoveTo(m_width_left_8);
-	dc_left_8_ptr->LineTo((int)(hv_COL_left_8.D() / scale),(int)( hv_ROW_left_8.D() /scale));
-	dc_left_8_ptr->MoveTo(m_height_left_8);
-	dc_left_8_ptr->LineTo((int)(hv_COL_left_8.D() / scale), (int)(hv_ROW_left_8.D() / scale));
+	if (!flag_left_locate_error)
+	{
+		width_RowBegin_left_8 = hv_width_line_RowBegin_left_8[0].D() / scale;
+		width_ColBegin_left_8 = hv_width_line_ColBegin_left_8[0].D() / scale;
+		width_RowEnd_left_8 = hv_width_line_RowEnd_left_8[0].D() / scale;
+		width_ColEnd_left_8 = hv_width_line_ColEnd_left_8[0].D() / scale;
 
+		height_RowBegin_left_8 = hv_height_line_RowBegin_left_8[0].D() / scale;
+		height_ColBegin_left_8 = hv_height_line_ColBegin_left_8[0].D() / scale;
+		height_RowEnd_left_8 = hv_height_line_RowEnd_left_8[0].D() / scale;
+		height_ColEnd_left_8 = hv_height_line_ColEnd_left_8[0].D() / scale;
+
+		//更新左相机定位直线坐标
+		if (width_ColBegin_left_8 > width_ColEnd_left_8)
+			m_width_left_8 = { width_ColBegin_left_8,width_RowBegin_left_8 };
+		else
+			m_width_left_8 = { width_ColEnd_left_8,width_RowEnd_left_8 };
+		if (height_RowBegin_left_8 < height_RowEnd_left_8)
+			m_height_left_8 = { height_ColEnd_left_8 ,height_RowEnd_left_8 };
+		else
+			m_height_left_8 = { height_ColBegin_left_8 ,height_RowBegin_left_8 };
+		dc_left_8_ptr->MoveTo(m_width_left_8);
+		dc_left_8_ptr->LineTo((int)(hv_COL_left_8.D() / scale), (int)(hv_ROW_left_8.D() / scale));
+		dc_left_8_ptr->MoveTo(m_height_left_8);
+		dc_left_8_ptr->LineTo((int)(hv_COL_left_8.D() / scale), (int)(hv_ROW_left_8.D() / scale));
+
+	}
+	
 }
 
 
@@ -1504,19 +1575,10 @@ void CvisionDlg::OnShowRightPic()
 	if (hBmp_8_right != NULL)
 		DeleteObject(hBmp_8_right);
 	// 右侧相机图片显示
-	hBmp_8_right = (HBITMAP)::LoadImage(AfxGetInstanceHandle(), L"E://HX-master/HX/right.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+	hBmp_8_right = (HBITMAP)::LoadImage(AfxGetInstanceHandle(), L"D://HX-master/HX-master/HX/right.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 	m_vs_pic_8_right.SetBitmap(hBmp_8_right);    // 设置图片控件m_jzmPicture的位图图片为IDB_BITMAP1  
 
-	width_RowBegin_right_8 = hv_width_line_RowBegin_right_8[0].D() / scale;
-	width_ColBegin_right_8 = hv_width_line_ColBegin_right_8[0].D() / scale;
-	width_RowEnd_right_8 = hv_width_line_RowEnd_right_8[0].D() / scale;
-	width_ColEnd_right_8 = hv_width_line_ColEnd_right_8[0].D() / scale;
-
-	height_RowBegin_right_8 = hv_height_line_RowBegin_right_8[0].D() / scale;
-	height_ColBegin_right_8 = hv_height_line_ColBegin_right_8[0].D() / scale;
-	height_RowEnd_right_8 = hv_height_line_RowEnd_right_8[0].D() / scale;
-	height_ColEnd_right_8 = hv_height_line_ColEnd_right_8[0].D() / scale;
-
+	
 	//更新裁剪框坐标
 	m_endPos_right_8_x = m_startPos_right_8_x + rect_height;
 	m_endPos_right_8_y = m_startPos_right_8_y + rect_width;
@@ -1530,35 +1592,62 @@ void CvisionDlg::OnShowRightPic()
 	dc_right_8_ptr->LineTo(m_endPos_right_8_x, m_startPos_right_8_y);
 	dc_right_8_ptr->LineTo(m_startPos_right_8_x, m_startPos_right_8_y);
 
-	//更新右相机定位直线坐标
-	if (width_ColBegin_right_8 < width_ColEnd_right_8)
-		m_width_right_8 = { width_ColBegin_right_8,width_RowBegin_right_8 };
-	else
-		m_width_right_8 = { width_ColEnd_right_8,width_RowEnd_right_8 };
-	if (height_RowBegin_right_8 < height_RowEnd_right_8)
-		m_height_right_8 = { height_ColEnd_right_8 ,height_RowEnd_right_8 };
-	else
-		m_height_right_8 = { height_ColBegin_right_8 ,height_RowBegin_right_8 };
-	dc_right_8_ptr->MoveTo(m_width_right_8);
-	dc_right_8_ptr->LineTo((int)(hv_COL_right_8.D() / scale), (int)(hv_ROW_right_8.D() / scale));
-	dc_right_8_ptr->MoveTo(m_height_right_8);
-	dc_right_8_ptr->LineTo((int)(hv_COL_right_8.D() / scale), (int)(hv_ROW_right_8.D() / scale));
+	if (!flag_right_locate_error)
+	{
+		width_RowBegin_right_8 = hv_width_line_RowBegin_right_8[0].D() / scale;
+		width_ColBegin_right_8 = hv_width_line_ColBegin_right_8[0].D() / scale;
+		width_RowEnd_right_8 = hv_width_line_RowEnd_right_8[0].D() / scale;
+		width_ColEnd_right_8 = hv_width_line_ColEnd_right_8[0].D() / scale;
+
+		height_RowBegin_right_8 = hv_height_line_RowBegin_right_8[0].D() / scale;
+		height_ColBegin_right_8 = hv_height_line_ColBegin_right_8[0].D() / scale;
+		height_RowEnd_right_8 = hv_height_line_RowEnd_right_8[0].D() / scale;
+		height_ColEnd_right_8 = hv_height_line_ColEnd_right_8[0].D() / scale;
+
+		//更新右相机定位直线坐标
+		if (width_ColBegin_right_8 < width_ColEnd_right_8)
+			m_width_right_8 = { width_ColBegin_right_8,width_RowBegin_right_8 };
+		else
+			m_width_right_8 = { width_ColEnd_right_8,width_RowEnd_right_8 };
+		if (height_RowBegin_right_8 < height_RowEnd_right_8)
+			m_height_right_8 = { height_ColEnd_right_8 ,height_RowEnd_right_8 };
+		else
+			m_height_right_8 = { height_ColBegin_right_8 ,height_RowBegin_right_8 };
+		dc_right_8_ptr->MoveTo(m_width_right_8);
+		dc_right_8_ptr->LineTo((int)(hv_COL_right_8.D() / scale), (int)(hv_ROW_right_8.D() / scale));
+		dc_right_8_ptr->MoveTo(m_height_right_8);
+		dc_right_8_ptr->LineTo((int)(hv_COL_right_8.D() / scale), (int)(hv_ROW_right_8.D() / scale));
+	}
+	
 }
 
 void CvisionDlg::OnLeftCollectAndCompress()
 {
 	//GrabImage(&ho_image_left_8, hv_AcqHandle_8_left);
 	//string pic_name = CPublic::LEFT_MATWINDOW_NAME() + string(".bmp");
-	string pic_name = DATA_FOLDERs + string("view1.bmp");
-	ReadImage(&ho_image_left_8, pic_name.c_str());
+	string pic_name = DATA_FOLDER + string("view1.bmp");
+	try
+	{
+		leftCam->m_frame_ready_;
+		Sleep(200);
+		ReadImage(&ho_image_left_8, "D:/HX-master/HX-master/HX/view1.bmp");
 
+	}
+	catch (const HalconCpp::HOperatorException& ee)
+	{
+		locate_times_error++;
+		flag_left_locate_error = true;
+		return;
+	}
 
-	//压缩图片方便显示
-	ZoomImageSize(ho_image_left_8, &ho_ImageZoom_left_8, hv_Width / scale, hv_Height / scale, "constant");
-	//需要改成绝对路径
-	WriteImage(ho_ImageZoom_left_8, "bmp", 0, "left.bmp");
-
-
+	////压缩图片方便显示
+	//ZoomImageSize(ho_image_left_8, &ho_ImageZoom_left_8, hv_Width / scale, hv_Height / scale, "constant");
+	////需要改成绝对路径
+	//WriteImage(ho_ImageZoom_left_8, "bmp", 0, "left.bmp");
+	img_left = imread("D://HX-master/HX-master/HX/view1.bmp", 0);
+	resize(img_left, img_left, Size(0, 0), 1.0 / ((double)scale), 1.0 / ((double)scale));
+	imwrite("D://HX-master/HX-master/HX/left.bmp", img_left);
+	remove("D://HX-master/HX-master/HX/view1.bmp");
 	m_endPos_left_8_x = m_startPos_left_8_x + rect_height;
 	m_endPos_left_8_y = m_startPos_left_8_y + rect_width;
 	//添加裁剪框数据
@@ -1573,14 +1662,31 @@ void CvisionDlg::OnLeftCollectAndCompress()
 
 void CvisionDlg::OnRightCollectAndCompress()
 {
-	//GrabImage(&ho_image_right_8, hv_AcqHandle_8_right);
-	//string pic_name = CPublic::RIGHT_MATWINDOW_NAME() + string(".bmp");
-	string pic_name = DATA_FOLDERs + string("view2.bmp");
-	ReadImage(&ho_image_right_8, pic_name.c_str());
+	
+	string pic_name = DATA_FOLDER + string("view2.bmp");
+	try
+	{
+		rightCam->m_frame_ready_;
+		ReadImage(&ho_image_right_8, "D:/HX-master/HX-master/HX/view2.bmp");
+		
+	}
+	catch (const HalconCpp::HOperatorException& e)
+	{
+		locate_times_error++;
+		flag_right_locate_error = true;
+		return;
+	}
+	
 	//压缩图片方便显示
-	ZoomImageSize(ho_image_right_8, &ho_ImageZoom_right_8, hv_Width / scale, hv_Height / scale, "constant");
-	//需要改成绝对路径
-	WriteImage(ho_ImageZoom_right_8, "bmp", 0, "right.bmp");
+	
+	//ZoomImageSize(ho_image_right_8, &ho_ImageZoom_right_8, hv_Width / scale, hv_Height / scale, "constant");
+	////需要改成绝对路径
+	//WriteImage(ho_ImageZoom_right_8, "bmp", 0, "right.bmp");
+	img_right = imread("D://HX-master/HX-master/HX/view2.bmp",0);
+	resize(img_right, img_right,Size(0,0), 1.0/ ((double)scale), 1.0/ ((double)scale));
+	imwrite("D://HX-master/HX-master/HX/right.bmp", img_right);
+
+	remove("D://HX-master/HX-master/HX/view2.bmp");
 	//添加裁剪框数据
 	m_endPos_right_8_x = m_startPos_right_8_x + rect_height;
 	m_endPos_right_8_y = m_startPos_right_8_y + rect_width;
@@ -1633,15 +1739,21 @@ int locateleft()
 	if (hv_width_line_Num_left_8 == 0)
 	{
 		//empty_location_data();
-		AfxMessageBox(_T("左边没找到横直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域!"));
+		flag_left_locate_error = true;
+		locate_times_error++;
+		
+		//AfxMessageBox(_T("左边没找到横直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域!"));
 		wrong_times++;
 		return 0;
 	}
 	if (hv_width_line_Num_left_8 > 4)
 	{
 		//empty_location_data();
+		flag_left_locate_error = true;
+		locate_times_error++;
+
 		wrong_times++;
-		AfxMessageBox(_T("左边找到至少5条横直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域!"));
+		//AfxMessageBox(_T("左边找到至少5条横直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域!"));
 		return 0;
 	}
 	if (hv_width_line_Num_left_8 > 1 && hv_width_line_Num_left_8 < 5)
@@ -1664,16 +1776,21 @@ int locateleft()
 	{
 		//check_l_over = 0;
 		//empty_location_data();
+		flag_left_locate_error = true;
+		locate_times_error++;
 		wrong_times++;
-		AfxMessageBox(_T("左边没找到竖直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域"));
+		//AfxMessageBox(_T("左边没找到竖直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域"));
 		return 0;
 	}
 	if (hv_height_line_Num_left_8 > 4)
 	{
 		//check_l_over = 0;
 		//empty_location_data();
+		flag_left_locate_error = true;
+		locate_times_error++;
+
 		wrong_times++;
-		AfxMessageBox(_T("左边找到至少5条竖直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域"));
+		//AfxMessageBox(_T("左边找到至少5条竖直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域"));
 		return 0;
 	}
 
@@ -1758,15 +1875,19 @@ int locateright()
 	if (hv_width_line_Num_right_8 == 0)
 	{
 		//empty_location_data();
+		flag_right_locate_error = true;
+		locate_times_error++;
 		wrong_times++;
-		AfxMessageBox(_T("右边没找到横直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域!"));
+		//AfxMessageBox(_T("右边没找到横直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域!"));
 		return 0;
 	}
 	if (hv_width_line_Num_right_8 > 4)
 	{
 		//empty_location_data();
+		flag_right_locate_error = true;
+		locate_times_error++;
 		wrong_times++;
-		AfxMessageBox(_T("右边至少找到5条横直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域!"));
+		//AfxMessageBox(_T("右边至少找到5条横直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域!"));
 		return 0;
 	}
 	if (hv_width_line_Num_right_8 < 5 && hv_width_line_Num_right_8 > 1)
@@ -1784,18 +1905,18 @@ int locateright()
 	//检查识别出了几条直线
 	if (hv_height_line_Num_right_8 == 0)
 	{
-		//check_l_over = 0;
-		//empty_location_data();
+		flag_right_locate_error = true;
+		locate_times_error++;
 		wrong_times++;
-		AfxMessageBox(_T("右边没找到竖直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域"));
+		//AfxMessageBox(_T("右边没找到竖直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域"));
 		return 0;
 	}
 	if (hv_height_line_Num_right_8 > 4)
 	{
-		//check_l_over = 0;
-		//empty_location_data();
+		flag_right_locate_error = true;
+		locate_times_error++;
 		wrong_times++;
-		AfxMessageBox(_T("右边至少找到5条竖直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域"));
+		//AfxMessageBox(_T("右边至少找到5条竖直线! 定位失败,检测直角失败,请框选图片裁剪框时尽量选择直角附近光照对比明显的区域"));
 		return 0;
 	}
 	if (hv_height_line_Num_right_8 > 1 && hv_height_line_Num_right_8 < 5)
@@ -1854,80 +1975,6 @@ int locateright()
 	return 0;
 }
 
-void CvisionDlg::OnBnClickedButton1()
-{
-	// TODO: 在此添加控件通知处理程序代码
-	
-
-	try
-	{
-		//发送软触发指令
-		leftCam->m_frame_ready_ = false;
-		rightCam->m_frame_ready_ = false;
-		leftCam->ObjFeatureControlPtr->GetCommandFeature("TriggerSoftware")->Execute();
-		rightCam->ObjFeatureControlPtr->GetCommandFeature("TriggerSoftware")->Execute();
-	}
-	catch (CGalaxyException& e)
-	{
-		MessageBox(CString(e.what()));
-		return;
-	}
-	catch (std::exception& e)
-	{
-		MessageBox(CString(e.what()));
-		return;
-	}
-	while (leftCam->m_frame_ready_ == false || rightCam->m_frame_ready_ == false)
-	{
-
-	}
-
-	//Sleep(4000);
-
-	OnLeftCollectAndCompress();
-	OnRightCollectAndCompress();
-
-	locateleft();
-	locateright();
-
-	OnShowLeftPic();
-	OnShowRightPic();
-	coordinate_transformation_left();
-	coordinate_transformation_right();
-	if (flag_locate_left_over == 1 && flag_locate_right_over == 1)
-	{
-		OnShowList();
-		flag_locate_left_over = 0;
-		flag_locate_right_over = 0;
-		OnInitLocateData();
-	}
-	test_times++;
-}
-
-
-
-
-void CvisionDlg::OnShowList()
-{
-	// TODO: 在此处添加实现代码.
-	//将定位数据添加到列表中
-	Column_Left.Format(_T("%f"), ROW_LEFT_8);
-	m_vs_list_location_data.InsertItem(0, Column_Left);
-
-	Row_Left.Format(_T("%f"), COL_LEFT_8);
-	m_vs_list_location_data.SetItemText(0, 1, Row_Left);
-
-	Column_Right.Format(_T("%f"), ROW_RIGHT_8);
-	m_vs_list_location_data.SetItemText(0, 2, Column_Right);
-
-	Row_Right.Format(_T("%f"), COL_RIGHT_8);
-	m_vs_list_location_data.SetItemText(0, 3, Row_Right);
-
-	ANGLE = -atan((ROW_RIGHT_8 - ROW_LEFT_8) / (COL_RIGHT_8 - COL_LEFT_8));
-
-	Angle.Format(_T("%f"), ANGLE);
-	m_vs_list_location_data.SetItemText(0, 4, Angle);
-}
 
 
 void CvisionDlg::OnInitLocateData()
@@ -1968,7 +2015,7 @@ void CvisionDlg::OnInitLocateData()
 void CvisionDlg::OnAllLeftLocate()
 {
 	// 此函数实现左相机采图,读图,定位,显示,坐标转换的全功能
-
+	left_cut_pic_begin_time = GetTickCount64();
 	try
 	{
 		//发送软触发指令
@@ -1987,34 +2034,83 @@ void CvisionDlg::OnAllLeftLocate()
 	}
 	while (leftCam->m_frame_ready_ == false)
 	{
+		Sleep(100);
 		//等待采图完成
 	}
+	left_loacate_begin_time = GetTickCount64();
+
+	flag_left_locate_error = false;
 	OnLeftCollectAndCompress();
 	locateleft();
-
 	OnShowLeftPic();
-	coordinate_transformation_left();
+	if (!flag_left_locate_error)
+	{
+		coordinate_transformation_left();
+	}
+
 	flag_locate_left_over = 1;
+	left_loacate_over_time = GetTickCount64();
+
 	if (flag_locate_left_over == 1 && flag_locate_right_over == 1)
 	{
-		flag_collect_success = false;
+
+		double_thread_time = GetTickCount64();
+		t211 = GetTickCount64();
+		t211 = t211 - t111;
+		left_cut_pic_begin_time;
+		left_loacate_begin_time;
+		left_loacate_over_time;
+		right_cut_pic_begin_time;
+		right_loacate_begin_time;
+		right_loacate_over_time;
+		double_thread_time;
+		///AfxMessageBox(str); */
+
+		ArriveFlag = false;
 		flag_locate_left_over = 0;
 		flag_locate_right_over = 0;
-		OnShowList();
 
 		//左右相机开始标志位置零
 		flag_left_locate_begin = 0;
 		flag_right_locate_begin = 0;
-		//将定位数据传给数据库
-		vs_x = ROW_LEFT_8;
-		vs_y = COL_LEFT_8;
-		vs_theta = ANGLE;
-		//将定位数据传给PLC
-		Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X);
-		Result[1] = (int)(COL_LEFT_8 * 10 - BIAO_Y);
-		Result[2] = (int)(ANGLE * 100000);
-		//将所有定位数据置零
-		OnInitLocateData();
+
+		if ((!flag_left_locate_error)&& (!flag_right_locate_error))
+		{
+
+
+			//OnShowList();
+			//将定位数据传给数据库
+			vs_x = ROW_LEFT_8;
+			vs_y = COL_LEFT_8;
+			vs_theta = ANGLE;
+			//将定位数据传给PLC
+			Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X*10);
+			Result[1] = (int)(COL_LEFT_8 * 10 - BIAO_Y*10);
+			Result[2] = (int)(ANGLE * 10000);
+			SetTimer(2, 50, NULL);
+			//将所有定位数据置零
+			OnInitLocateData();
+		}
+		if(locate_times_error >= 3)
+		{
+			vs_x = -1;
+			vs_y = -1;
+			vs_theta = -1;
+			//将定位数据传给PLC
+			Result[0] = -1;
+			Result[1] = -1;
+			Result[2] = -1;
+			
+			SendData(1, 73, 21061);
+			//将所有定位数据置零
+			OnInitLocateData();
+			//AfxMessageBox(_T("图像定位失败"));
+			locate_times_error = 0;
+			
+		}
+		//在错误次数==1或==2时并且继续出错时，将到位标志置1，再次执行定位
+		if ((locate_times_error == 1 && (flag_right_locate_error || flag_left_locate_error)) || (locate_times_error == 2 && (flag_right_locate_error || flag_left_locate_error)))
+			ArriveFlag = true;
 	}
 
 }
@@ -2022,7 +2118,7 @@ void CvisionDlg::OnAllLeftLocate()
 void CvisionDlg::OnAllRightLocate()
 {
 	// 此函数实现右相机采图,读图,定位,显示,坐标转换的全功能
-
+	right_cut_pic_begin_time = GetTickCount64();
 	try
 	{
 		//发送软触发指令
@@ -2042,42 +2138,121 @@ void CvisionDlg::OnAllRightLocate()
 	while ( rightCam->m_frame_ready_ == false)
 	{
 		//等待采图完成
+		Sleep(100);
 	}
+	right_loacate_begin_time = GetTickCount64();
+
+	flag_right_locate_error = false;
 	OnRightCollectAndCompress();
 	locateright();
 	
-
 	OnShowRightPic();
-	coordinate_transformation_right();
+	if (!flag_right_locate_error)
+	{
+		coordinate_transformation_right();
+	}
 	//flag_locate_over++标志右相机坐标转换完成
 	flag_locate_right_over = 1;
+
+	right_loacate_over_time = GetTickCount();
 	if (flag_locate_left_over == 1 && flag_locate_right_over == 1)
 	{
-		flag_collect_success = false;
+		double_thread_time = GetTickCount64();
+		t211 = GetTickCount64();
+		t211 = t211 - t111;
+		str.Format(L"time:%dms", t211);
+
+		ArriveFlag = false;
 		flag_locate_left_over = 0;
 		flag_locate_right_over = 0;
 		//左右相机开始标志位置零
 		flag_left_locate_begin = 0;
 		flag_right_locate_begin = 0;
-
-		OnShowList();
-		//将定位数据传给数据库
-		vs_x = ROW_LEFT_8;
-		vs_y = COL_LEFT_8;
-		vs_theta = ANGLE;
-		//将定位数据传给PLC
-		Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X);
-		Result[1] = (int)(COL_LEFT_8 * 10 - BIAO_Y);
-		Result[2] = (int)(ANGLE * 100000);
-		//将所有定位数据置零
-		OnInitLocateData();
+		if ((!flag_left_locate_error) && (!flag_right_locate_error))
+		{
+			//OnShowList();
+			//将定位数据传给数据库
+			vs_x = ROW_LEFT_8;
+			vs_y = COL_LEFT_8;
+			vs_theta = ANGLE;
+			//将定位数据传给PLC
+			Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X*10);
+			Result[1] = (int)(COL_LEFT_8 * 10 - BIAO_Y*10);
+			Result[2] = (int)(ANGLE * 100000);
+			SetTimer(2, 50, NULL);
+			//将所有定位数据置零
+			OnInitLocateData();
+		}
+		if (locate_times_error >= 3  )
+		{
+			vs_x = -1;
+			vs_y = -1;
+			vs_theta = -1;
+			//将定位数据传给PLC
+			Result[0] = -1;
+			Result[1] = -1;
+			Result[2] = -1;
+			SendData(1, 73, 21061);
+			//将所有定位数据置零
+			OnInitLocateData();
+			//AfxMessageBox(_T("图像定位失败"));
+			locate_times_error = 0;
+			
+		}
+		//if (((locate_times_error == 1 && (flag_right_locate_error || flag_left_locate_error))|| locate_times_error == 2)
+		if((locate_times_error == 1&&(flag_right_locate_error|| flag_left_locate_error))|| (locate_times_error == 2 && (flag_right_locate_error || flag_left_locate_error)))
+			ArriveFlag = true;
 	}
 	
 }
 
 
-void CvisionDlg::OnBnClickedButton2()
+
+
+
+
+// 状态改变监测
+void CvisionDlg::StatusChange()
 {
-	// TODO: 在此添加控件通知处理程序代码
-	flag_collect_success = true;
+	// TODO: 在此处添加实现代码
+	if (flag_open_cam == true)
+	{
+		m_vs_pic_camstatus.SetIcon(m_vs_hIconGreen);
+	}
+	else if (flag_open_cam == false)
+	{
+		m_vs_pic_camstatus.SetIcon(m_vs_hIconRed);
+	}
+	if ((!flag_left_locate_error) && (!flag_right_locate_error))
+	{
+		m_vs_pic_locate.SetIcon(m_vs_hIconGreen);
+	}
+	else if ((flag_left_locate_error) || (flag_right_locate_error))
+	{
+		m_vs_pic_locate.SetIcon(m_vs_hIconRed);
+	}
+	if (SprayFlag == true)
+	{
+		m_vs_pic_glue.SetIcon(m_vs_hIconGreen);
+	}
+	else if (SprayFlag == false)
+	{
+		m_vs_pic_glue.SetIcon(m_vs_hIconRed);
+	}
+	if (PlcFlag == true)
+	{
+		m_vs_pic_plc.SetIcon(m_vs_hIconGreen);
+	}
+	else if (PlcFlag == false)
+	{
+		m_vs_pic_plc.SetIcon(m_vs_hIconRed);
+	}
+	if (StopFlag == true)
+	{
+		m_vs_pic_stop.SetIcon(m_vs_hIconRed);
+	}
+	else if (StopFlag == false)
+	{
+		m_vs_pic_stop.SetIcon(m_vs_hIconGreen);
+	}
 }

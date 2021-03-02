@@ -854,9 +854,9 @@ void CHXDlg::OnExitAll()
 	// TODO: 在此添加命令处理程序代码
 	
 	exitFlag = true;
-	Sleep(100);
+	Sleep(1500);
 	CmodbusDlg *pdlg = CmodbusDlg::pModbusdlg;
 	pdlg->OnClose();
-	Sleep(100);
+	Sleep(200);
 	AfxGetMainWnd()->SendMessage(WM_CLOSE);
 }

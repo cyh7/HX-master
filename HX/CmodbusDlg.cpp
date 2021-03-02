@@ -10,16 +10,16 @@
 #include "HXDlg.h"
 #include "InfoFile.h"
 
-
+//波特率
 int BaudRateArray[] = { 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 38400, 56000, 57600, 115200 };
-
+//奇偶校验
 std::string ParityArray[] = { "None", "Odd", "Even", "Mark", "Space" };
-
+//数据位
 std::string DataBitsArray[] = { "5", "6", "7","8" };
-
+//停止位
 std::string StopArray[] = { "1", "1.5", "2" };
 //声明一个位操作的容器
-vector<bool> bit_manipul(15, 0);
+vector<bool> bit_manipul(16, 0);
 CmodbusDlg *CmodbusDlg::pModbusdlg = NULL;
 
 //判断从机发送回复信息的对错 可以进入第一次发送
@@ -27,11 +27,6 @@ bool RecMsgFlag = true;
 //接收超时
 bool OverTime_Vision = false;
 bool OverTime = false;
-
-
-
-
-
 //T1为开关按下时刻，T2为数据接收时刻
 long m_CadT1;
 //给T2赋一个初值，防止首次执行时发生误判，之后的时候若T2值为0则说明通信断线，我们没有收到接收函数
@@ -46,19 +41,10 @@ long m_Status_T2 = 1;
 bool ReadStatus = false;
 //判断背板是否到达
 bool ArriveFlag = false;
-
-
-//胶条数据的总数量，是从sendGlueData赋值
-//int vecGlueNum;
-//发送胶条时计数
-//int locGlueNum = 0;
-
 //声明一个当前是否是单次发送的flag
 bool SendOnce = true;
-//是否是每200s询问一次，不是的话就属于发送视觉识别的程序，计算发送定位数据是否超时
 bool SendOnce_Vision = true;
-
-
+//是否是每200s询问一次，不是的话就属于发送视觉识别的程序，计算发送定位数据是否超时
 int DisconnectNum = 0;
 //设置界面
 //X上下限 Y上下限 THETA上下限
@@ -124,6 +110,8 @@ CmodbusDlg::CmodbusDlg(CWnd* pParent /*=nullptr*/)
 	, m_mod_edit_rect_topleft_y(0)
 	, m_mod_edit_right_rect_topleft_x(0)
 	, m_mod_edit_right_rect_topleft_y(0)
+	, m_mod_edit_left_baoguang(0)
+	, m_mod_edit_right_baoguang(0)
 {
 
 }
@@ -173,6 +161,8 @@ void CmodbusDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_THETAFLOOR5, m_mod_edit_rect_topleft_y);
 	DDX_Text(pDX, IDC_EDIT_THETAFLOOR6, m_mod_edit_right_rect_topleft_x);
 	DDX_Text(pDX, IDC_EDIT_THETAFLOOR7, m_mod_edit_right_rect_topleft_y);
+	DDX_Text(pDX, IDC_EDIT_THETAFLOOR8, m_mod_edit_left_baoguang);
+	DDX_Text(pDX, IDC_EDIT_THETAFLOOR9, m_mod_edit_right_baoguang);
 }
 
 
@@ -201,10 +191,12 @@ UINT ThreadRec(LPVOID param)
 {
 	CmodbusDlg *pdlg = CmodbusDlg::pModbusdlg;
 
-	while (1)
+	while(1)
 	{
 		pdlg->OnReceive();
 	}
+	AfxEndThread(0);
+	return 0;
 }
 
 
@@ -282,39 +274,7 @@ BOOL CmodbusDlg::OnInitDialog()
 	}
 	m_comb1.SetCurSel(0);
 
-	//OnBnClickedButtonOpenClose();
-
-	////胶条列表
-	//CString strglue[] = { _T("条数"),_T("X1"),_T("Y1") ,_T("X2"),_T("Y2"),_T("是否喷胶") };
-	//for (int i = 0; i < 6; i++)
-	//{
-	//	//设置表头 索引 内容 对齐方式 列宽度
-	//	m_GlueList.InsertColumn(i, strglue[i], LVCFMT_LEFT, 100);
-	//}
-	//m_GlueList.GetScrollPos(SB_VERT); //设置垂直滚动条
-	//DWORD dwStyle1 = m_GlueList.GetExtendedStyle();
-	//dwStyle1 |= LVS_EX_GRIDLINES;
-	//m_GlueList.SetExtendedStyle(dwStyle1);//设置扩展风格
-	//m_GlueList.DeleteAllItems(); 清空所有表项
-	//表头不算正文里的内容，索引从0开始
-	//GlueList.InsertItem(0, _T("1"));
-	//给这个Item插入其他列的数据
-	//GlueList.SetItemText(0,1,_T("男"))第0行第1列
-
-	//定位信息表
-	//CString stridentify[] = { _T("坐标"),_T("X坐标"),_T("Y坐标"),_T("Theta") };
-	//for (int i = 0; i < 4; i++)
-	//{
-	//	m_IdentifyList.InsertColumn(i, stridentify[i], LVCFMT_LEFT, 100);
-	//}
-	//m_IdentifyList.GetScrollPos(SB_VERT); //设置垂直滚动条
-	//DWORD dwStyle2 = m_IdentifyList.GetExtendedStyle();
-	//dwStyle2 |= LVS_EX_GRIDLINES;
-	//m_IdentifyList.SetExtendedStyle(dwStyle2);//设置扩展风格
-
-	//串口信息connect
-	//m_SerialPort.readReady.connect(this, &CmodbusDlg::OnReceive);
-	//定义一个画刷
+	
 	m_Brush.CreateSolidBrush(RGB(240, 240, 220));
 
 	//按钮重绘
@@ -428,133 +388,147 @@ BOOL CmodbusDlg::OnInitDialog()
 		//设置字体大小
 		m_mod_btn_timesend.setWordSize(200);
 	}
-	
+
 	//静态文本字体改变
+	{
+		f_mod_font.CreateFontW(18,      // nHeight，文字大小
+			0,          // nWidth
+			0,          // nEscapement
+			0,          // nOrientation
+			FW_BOLD,    // nWeight，加粗
+			FALSE,      // bItalic
+			FALSE,      // bUnderline
+			0,          // cStrikeOut
+			ANSI_CHARSET,               // nCharSet
+			OUT_DEFAULT_PRECIS,         // nOutPrecision
+			CLIP_DEFAULT_PRECIS,        // nClipPrecision
+			DEFAULT_QUALITY,            // nQuality
+			DEFAULT_PITCH | FF_SWISS,   // nPitchAndFamily
+			_T("微软雅黑"));       // lpszFac，字体
+		//静态文本
+		GetDlgItem(IDC_STATIC4)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC5)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC6)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC7)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC8)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC9)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC14)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC15)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC16)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC17)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC18)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC19)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC20)->SetFont(&f_mod_font, false);
+
+		GetDlgItem(IDC_STATIC21)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC22)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC23)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC24)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC25)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC26)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC27)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC28)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC29)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC30)->SetFont(&f_mod_font, false);
+		//三个 group_box
+		GetDlgItem(IDC_STATIC3)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC10)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC11)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC12)->SetFont(&f_mod_font, false);
+		GetDlgItem(IDC_STATIC13)->SetFont(&f_mod_font, false);
+
+
+		f_mod_name.CreateFontW(50,      // nHeight，文字大小
+			0,          // nWidth
+			0,          // nEscapement
+			0,          // nOrientation
+			FW_BOLD,    // nWeight，加粗
+			FALSE,      // bItalic
+			FALSE,      // bUnderline
+			0,          // cStrikeOut
+			ANSI_CHARSET,               // nCharSet
+			OUT_DEFAULT_PRECIS,         // nOutPrecision
+			CLIP_DEFAULT_PRECIS,        // nClipPrecision
+			DEFAULT_QUALITY,            // nQuality
+			DEFAULT_PITCH | FF_SWISS,   // nPitchAndFamily
+			_T("楷体"));       // lpszFac，字体
+		GetDlgItem(IDC_MOD_STATIC_NAME)->SetFont(&f_mod_name, false);
+	}
 	//CFont* p_font = new CFont;
 	//p_font->CreateFont(18,      // nHeight，文字大小
-	f_mod_font.CreateFontW(18,      // nHeight，文字大小
-		0,          // nWidth
-		0,          // nEscapement
-		0,          // nOrientation
-		FW_BOLD,    // nWeight，加粗
-		FALSE,      // bItalic
-		FALSE,      // bUnderline
-		0,          // cStrikeOut
-		ANSI_CHARSET,               // nCharSet
-		OUT_DEFAULT_PRECIS,         // nOutPrecision
-		CLIP_DEFAULT_PRECIS,        // nClipPrecision
-		DEFAULT_QUALITY,            // nQuality
-		DEFAULT_PITCH | FF_SWISS,   // nPitchAndFamily
-		_T("微软雅黑"));       // lpszFac，字体
-	//静态文本
-	GetDlgItem(IDC_STATIC4)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC5)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC6)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC7)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC8)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC9)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC14)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC15)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC16)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC17)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC18)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC19)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC20)->SetFont(&f_mod_font, false);
-
-	GetDlgItem(IDC_STATIC21)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC22)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC23)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC24)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC25)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC26)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC27)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC28)->SetFont(&f_mod_font, false);
-	//三个 group_box
-	GetDlgItem(IDC_STATIC3)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC10)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC11)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC12)->SetFont(&f_mod_font, false);
-	GetDlgItem(IDC_STATIC13)->SetFont(&f_mod_font, false);
-
 	
-	f_mod_name.CreateFontW(50,      // nHeight，文字大小
-		0,          // nWidth
-		0,          // nEscapement
-		0,          // nOrientation
-		FW_BOLD,    // nWeight，加粗
-		FALSE,      // bItalic
-		FALSE,      // bUnderline
-		0,          // cStrikeOut
-		ANSI_CHARSET,               // nCharSet
-		OUT_DEFAULT_PRECIS,         // nOutPrecision
-		CLIP_DEFAULT_PRECIS,        // nClipPrecision
-		DEFAULT_QUALITY,            // nQuality
-		DEFAULT_PITCH | FF_SWISS,   // nPitchAndFamily
-		_T("楷体"));       // lpszFac，字体
-	GetDlgItem(IDC_MOD_STATIC_NAME)->SetFont(&f_mod_name, false);
 
 	
 	InitLayoutModbus(m_layoutMod, this);
 	//全屏幕操作
-	WINDOWPLACEMENT m_struOldWndpl;
-	//get current system resolution
-	int g_iCurScreenWidth = GetSystemMetrics(SM_CXSCREEN); //1920
-	int g_iCurScreenHeight = GetSystemMetrics(SM_CYSCREEN); //1080
+	{
+		WINDOWPLACEMENT m_struOldWndpl;
+		//get current system resolution
+		int g_iCurScreenWidth = GetSystemMetrics(SM_CXSCREEN); //1920
+		int g_iCurScreenHeight = GetSystemMetrics(SM_CYSCREEN); //1080
 
-	//for full screen while backplay
-	GetWindowPlacement(&m_struOldWndpl);
+		//for full screen while backplay
+		GetWindowPlacement(&m_struOldWndpl);
 
-	CRect rectWholeDlg;//entire client(including title bar)
-	CRect rectClient;//client area(not including title bar)
-	CRect rectFullScreen;
-	//用于接收左上角和右下角的屏幕坐标
-	GetWindowRect(&rectWholeDlg);
-	RepositionBars(0, 0xffff, AFX_IDW_PANE_FIRST, reposQuery, &rectClient);
-	//将显示器上给定点或矩形的客户去坐标转换为屏幕坐标 新的坐标是相对于屏幕左上角的
-	ClientToScreen(&rectClient);
+		CRect rectWholeDlg;//entire client(including title bar)
+		CRect rectClient;//client area(not including title bar)
+		CRect rectFullScreen;
+		//用于接收左上角和右下角的屏幕坐标
+		GetWindowRect(&rectWholeDlg);
+		RepositionBars(0, 0xffff, AFX_IDW_PANE_FIRST, reposQuery, &rectClient);
+		//将显示器上给定点或矩形的客户去坐标转换为屏幕坐标 新的坐标是相对于屏幕左上角的
+		ClientToScreen(&rectClient);
 
-	//-8 = 0 - 8
-	rectFullScreen.left = rectWholeDlg.left - rectClient.left;
-	//-28 = 0 - 28
-	rectFullScreen.top = rectWholeDlg.top;
-	// = 1088 + 1920 - 1080
-	rectFullScreen.right = rectWholeDlg.right + g_iCurScreenWidth - rectClient.right;
-	// = 639 + 1080 - 609
-	rectFullScreen.bottom = rectWholeDlg.bottom + g_iCurScreenHeight - rectClient.bottom - 20;
+		//-8 = 0 - 8
+		rectFullScreen.left = rectWholeDlg.left - rectClient.left;
+		//-28 = 0 - 28
+		rectFullScreen.top = rectWholeDlg.top;
+		// = 1088 + 1920 - 1080
+		rectFullScreen.right = rectWholeDlg.right + g_iCurScreenWidth - rectClient.right;
+		// = 639 + 1080 - 609
+		rectFullScreen.bottom = rectWholeDlg.bottom + g_iCurScreenHeight - rectClient.bottom - 20;
 
-	//enter into full screen;
-	WINDOWPLACEMENT struWndpl;
-	struWndpl.length = sizeof(WINDOWPLACEMENT);
-	struWndpl.flags = 0;
-	struWndpl.showCmd = SW_SHOWNORMAL;
-	struWndpl.rcNormalPosition = rectFullScreen;
-	SetWindowPlacement(&struWndpl);
+		//enter into full screen;
+		WINDOWPLACEMENT struWndpl;
+		struWndpl.length = sizeof(WINDOWPLACEMENT);
+		struWndpl.flags = 0;
+		struWndpl.showCmd = SW_SHOWNORMAL;
+		struWndpl.rcNormalPosition = rectFullScreen;
+		SetWindowPlacement(&struWndpl);
 
-	m_mod_hBitmap_logo = (HBITMAP)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDB_HG), IMAGE_BITMAP, 200, 40, LR_DEFAULTCOLOR);
-	m_mod_pic_logo.SetBitmap(m_mod_hBitmap_logo);
+		m_mod_hBitmap_logo = (HBITMAP)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDB_HG), IMAGE_BITMAP, 200, 40, LR_DEFAULTCOLOR);
+		m_mod_pic_logo.SetBitmap(m_mod_hBitmap_logo);
+	}
 	
-	CInfoFile file;
-	file.ReadDocline(backboard, x_floor, x_ceil, y_floor, y_ceil, theta_floor, theta_ceil, hv_Threshold_8,
-		hv_Filter_block_radius_8, rect_height,  rect_width, m_startPos_left_8_x,
-		 m_startPos_left_8_y,  m_startPos_right_8_x,  m_startPos_right_8_y);
-	m_mod_type = backboard;
-	m_mod_edit_xfloor = x_floor;
-	m_mod_edit_xceil = x_ceil;
-	m_mod_edit_yfloor = y_floor;
-	m_mod_edit_yceil = y_ceil;
-	m_mod_edit_thetafloor = theta_floor;
-	m_mod_edit_thetaceil = theta_ceil;
+	//读取设置
+	{
+		CInfoFile file;
+		file.ReadDocline(backboard, x_floor, x_ceil, y_floor, y_ceil, theta_floor, theta_ceil, hv_Threshold_8,
+			hv_Filter_block_radius_8, rect_height, rect_width, m_startPos_left_8_x,
+			m_startPos_left_8_y, m_startPos_right_8_x, m_startPos_right_8_y, left_baoguang_time, right_baoguang_time);
+		m_mod_type = backboard;
+		m_mod_edit_xfloor = x_floor;
+		m_mod_edit_xceil = x_ceil;
+		m_mod_edit_yfloor = y_floor;
+		m_mod_edit_yceil = y_ceil;
+		m_mod_edit_thetafloor = theta_floor;
+		m_mod_edit_thetaceil = theta_ceil;
 
-	m_mod_edit_threshold = hv_Threshold_8;
-	m_mod_edit_filter = hv_Filter_block_radius_8;
-	//存盘的是压缩后的裁剪框位置和尺寸,编辑框显示中的是实际的裁剪框位置和尺寸,所以编辑框显示时要乘以压缩比
-	m_mod_edit_height = rect_height * scale;
-	m_mod_edit_rect_width = rect_width * scale;
-	m_mod_edit_rect_topleft_x = m_startPos_left_8_x*scale;
-	m_mod_edit_rect_topleft_y = m_startPos_left_8_y * scale;
-	m_mod_edit_right_rect_topleft_x = m_startPos_right_8_x * scale;
-	m_mod_edit_right_rect_topleft_y = m_startPos_right_8_y * scale;
-	UpdateData(FALSE);
+		m_mod_edit_threshold = hv_Threshold_8;
+		m_mod_edit_filter = hv_Filter_block_radius_8;
+		//存盘的是压缩后的裁剪框位置和尺寸,编辑框显示中的是实际的裁剪框位置和尺寸,所以编辑框显示时要乘以压缩比
+		m_mod_edit_height = rect_height * scale;
+		m_mod_edit_rect_width = rect_width * scale;
+		m_mod_edit_rect_topleft_x = m_startPos_left_8_x * scale;
+		m_mod_edit_rect_topleft_y = m_startPos_left_8_y * scale;
+		m_mod_edit_right_rect_topleft_x = m_startPos_right_8_x * scale;
+		m_mod_edit_right_rect_topleft_y = m_startPos_right_8_y * scale;
+
+		m_mod_edit_left_baoguang = left_baoguang_time;
+		m_mod_edit_right_baoguang = right_baoguang_time;
+		UpdateData(FALSE);
+	}
+	
 
 	HANDLE hthreadREC = AfxBeginThread(ThreadRec, this, THREAD_PRIORITY_BELOW_NORMAL);
 
@@ -708,20 +682,6 @@ void CmodbusDlg::OnBnClickedButtonSendOnce()
 	}
 	
 
-	//int len1 = HexDataBuf.GetSize();
-	//CString temp('x', len1);
-	//for (int i = 0; i < len1; i++)
-	//{
-	//	temp.SetAt(i, HexDataBuf.GetAt(i));
-	//}
-
-
-	//int n = temp.GetLength();//n= 8
-	//int len = WideCharToMultiByte(CP_ACP, 0, temp, temp.GetLength(), NULL, 0, NULL, NULL);//len = 8
-	//char *m_str = new char[len + 1];
-	//WideCharToMultiByte(CP_ACP, 0, temp, temp.GetLength(), m_str, len, NULL, NULL);
-	//m_str[len + 1] = '\0';
-
 	m_SerialPort.writeData(sendData, sizeof(sendData));
 
 	//发送一次清空编辑框
@@ -865,12 +825,6 @@ void CmodbusDlg::OnReceive()
 	CString strtemp;
 	
 
-	
-
-	//CString tt;
-	//tt.Format(_T("2:%d"), T2 - T1);//前后之差即程序运行时间  
-	//MessageBox(tt);
-
 
 	//每次传进来的str都是新的 第二次的str是直接把所有的数据读到一块儿了
 	char * str = NULL;
@@ -893,12 +847,6 @@ void CmodbusDlg::OnReceive()
 	int iRet = m_SerialPort.readAllData(str); //06发过来的数据长度为8 接收到的数据是没错的
 
 	
-
-	//CString msg;
- //   //%02X为16进制显示  %d十进制 %s 字符串
- //   msg.Format(_T("%d"), iRet);
- //   MessageBox(msg);
-	//Sleep(1000);
 	if (iRet > 0)
 	{
 		//设置单次发送不计时T2,非单次发送计时T2
@@ -906,7 +854,7 @@ void CmodbusDlg::OnReceive()
 		{
 			//MessageBox(_T("计时"));
 			m_CadT2 = GetTickCount64();
-			if ((m_CadT2 - m_CadT1) > 200)
+			if ((m_CadT2 - m_CadT1) > 300)
 				OverTime = true;
 		}
 		/*if ((m_CadT2 - m_CadT1) > 50)
@@ -939,11 +887,6 @@ void CmodbusDlg::OnReceive()
 			RecCrcData[2] = str[2];
 			RecCrcData[3] = str[3];
 			RecCrcData[4] = str[4];
-			// CString msg;
-			////%02X为16进制显示  %d十进制 %s 字符串
-			// msg.Format(_T("%02X"), RecCrcData[0]);
-			// MessageBox(msg);
-			//转为无符号
 			RecCrcData[5] = str[5];
 			RecCrcData[6] = str[6];
 			if (SendFreqData[5] == RecCrcData[5] && SendFreqData[6] == RecCrcData[6])
@@ -957,12 +900,6 @@ void CmodbusDlg::OnReceive()
 					_itoa_s(MidData, MyChar, 10);
 					//测试成功 RecStr值为1，长度为1可以进行后续判断了
 					RecStr = MyChar;
-
-					//发送接收时间计算
-					//T2 = GetTickCount();
-					//CString tt;
-					//tt.Format(_T("%d"), T2 - T1);//前后之差即程序运行时间  
-					//MessageBox(tt);
 					if (RecStr == "0")
 					{
 						PlcCadRecFlag = true;
@@ -1003,16 +940,23 @@ void CmodbusDlg::OnReceive()
 						StopFlag = false;
 					if (bit_manipul[4] == true)
 					{
-						CcadDlg* pcaddlg = CcadDlg::pCaddlg;
-						pcaddlg->BanBtnSend();
+						if (CadBtnStatus == true)
+						{
+							CcadDlg* pcaddlg = CcadDlg::pCaddlg;
+							pcaddlg->BanBtnSend();
+						}
 					}
 					else
 					{
-						CcadDlg* pcaddlg = CcadDlg::pCaddlg;
-						pcaddlg->EnableBtnSend();
+						if (CadBtnStatus == false)
+						{
+							CcadDlg* pcaddlg = CcadDlg::pCaddlg;
+							pcaddlg->EnableBtnSend();
+						}
+						
 					}
 					//请求连接尝试标志位
-					if (bit_manipul[14] == true)
+					if (bit_manipul[15] == true)
 					{
 						PlcAskFlag = true;
 						//ASCII码对应CR
@@ -1021,7 +965,7 @@ void CmodbusDlg::OnReceive()
 					}
 					else
 						PlcAskFlag = false;
-					bit_manipul = vector<bool>(15, 0);
+					bit_manipul = vector<bool>(16, 0);
 				}
 			   
 			}
@@ -1049,10 +993,6 @@ void CmodbusDlg::OnReceive()
 			RecCrcData[3] = str[3];
 			RecCrcData[4] = str[4];
 			RecCrcData[5] = str[5];
-			//CString msg;
-			////%02X为16进制显示  %d十进制 %s 字符串
-			//msg.Format(_T("%02X"), SendFreqData[7]);
-			//MessageBox(msg);
 			RecCrcData[6] = str[6];
 			RecCrcData[7] = str[7];
 			//对比发送再收回的CRC校验
@@ -1065,19 +1005,6 @@ void CmodbusDlg::OnReceive()
 				RecMsgFlag = false;
 
 			}
-
-
-			/*CString RecStr;
-			for (int k = 0; k < iRet; k++)
-			{
-				strtemp.Format(_T("%02X "), RecCrcData[k]);
-
-				RecStr += strtemp;
-			}
-			RecStr += "\r\n";
-			m_EditReceiveCtrl.ReplaceSel(RecStr);
-
-			m_EditReceiveCtrl.SetSel(-1, -1);*/
 		}
 		else if (iRet == 9)
 		{
@@ -1098,10 +1025,6 @@ void CmodbusDlg::OnReceive()
 			RecCrcData[3] = str[3];
 			RecCrcData[4] = str[4];
 			RecCrcData[5] = str[5];
-			//CString msg;
-			////%02X为16进制显示  %d十进制 %s 字符串
-			//msg.Format(_T("%02X"), SendFreqData[7]);
-			//MessageBox(msg);
 			RecCrcData[6] = str[6];
 			RecCrcData[7] = str[7];
 			RecCrcData[8] = str[8];
@@ -1109,15 +1032,6 @@ void CmodbusDlg::OnReceive()
 			if (SendFreqData[7] == RecCrcData[7] && SendFreqData[8] == RecCrcData[8])
 			{
 				RecMsgFlag = true;
-
-				//m_CadT2 = GetTickCount();
-
-				//CString msg;
-				////%02X为16进制显示  %d十进制 %s 字符串
-				//msg.Format(_T("%d"), RecNum);
-				//MessageBox(msg);
-
-				//MessageBox(RecStr);
 			}
 			else
 			{
@@ -1137,10 +1051,6 @@ void CmodbusDlg::OnReceive()
 			pdatadlg->InsertDB(testLastTime, backboard, SprayBatch, vs_x, vs_y, vs_theta, data_good, data_plc, data_spray, data_stop);
 			insertdata = 1;
 		}
-		//把收到的数据显示出来
-		/*CString RecStr((char *)str);
-		m_EditReceiveCtrl.SetSel(-1, -1);
-		m_EditReceiveCtrl.ReplaceSel(RecStr);*/
 		CString RecStr;
 		for (int k = 0; k < iRet; k++)
 		{
@@ -1152,23 +1062,8 @@ void CmodbusDlg::OnReceive()
 		m_EditReceiveCtrl.ReplaceSel(RecStr);
 
 		m_EditReceiveCtrl.SetSel(-1, -1); 
-		//this->SetDlgItemTextW(IDC_EDIT2, m_EditReceive);//将m_EditReceive内容显示到ID为IDC_EDIT1的编辑框的最后位置
-		//m_EditReceiveCtrl.LineScroll(m_EditReceiveCtrl.GetLineCount() - 1, 0);//将垂直滚动条滚动到最后一
 		
 	}
-	
-	//如果这里出bug 插入不进去或者重复多次插入，就把他放到iret = 7里
-	//判断是否插入数据库
-	//插入数据库,插入(LastTime  1
-	//这里判断四个flag 生成四个CString 
-	//能进来就说明当前是正常的  要不通信状态不插入数据库
-	//上一次的坐标对比设置 CString 良与不良  7 8 9 10
-	//背板型号 2
-	//喷涂批次就是当前的SprayBatch 3
-	//X Y theta坐标   4 5 6
-	
-
-
 	delete []str;
 }
 
@@ -1203,36 +1098,8 @@ void CmodbusDlg::SendData(int CommTypeIn, WORD DownAdd, DWORD DownData)
 	SendData[7] = CRCData - 256 * SendData[6];
 	StrLength = 8;
 
-	//CString msg;
-	////%02X为16进制显示  %d十进制 %s 字符串
-	//msg.Format(_T("%02X"), SendData[3]);
-	//MessageBox(msg);
-
-	/*SendArray.RemoveAll();
-	SendArray.SetSize(StrLength);*/
-	//把待发送数据存入数组中
-
-	//CString msg;
- //   //%02X为16进制显示  %d十进制 %s 字符串
- //   msg.Format(_T("%02X"), SendData[3]);
- //   MessageBox(msg);
-
 	for (int Circle = 0; Circle < StrLength; Circle++)
 		SendArray[Circle] = SendData[Circle];
-
-	//int len1 = SendArray.GetSize();
-	//CString temp('x', len1);
-	//for (int i = 0; i < len1; i++)
-	//{m_SerialPort
-	//	temp.SetAt(i, SendArray.GetAt(i));
-	//}
-
-	//int n = temp.GetLength();//n= 8
-	//int len = WideCharToMultiByte(CP_ACP, 0, temp, temp.GetLength(), NULL, 0, NULL, NULL);//len = 8
-	//char *m_str = new char[len + 1];
-	//WideCharToMultiByte(CP_ACP, 0, temp, temp.GetLength(), m_str, len, NULL, NULL);
-	//m_str[len + 1] = '\0';
-
 	m_SerialPort.writeData(SendArray, 8);
 	//m_SerialPort.writeData(m_str, len);
 }
@@ -1268,15 +1135,9 @@ void CmodbusDlg::OnTimer(UINT_PTR nIDEvent)
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
 	switch (nIDEvent)
 	{
-		//一直读200ms，为true到位，false则不到位
-		//到位之后就可以发送尺寸数据
 
 		case 1:
 		{
-			/*SendOnce = true;
-			SendData(0, 95, 1);*/
-
-
 			break;
 		}
 
@@ -1418,8 +1279,15 @@ void CmodbusDlg::OnBnClickedModBtnChange()
 	y_ceil = m_mod_edit_yceil;
 	theta_floor = m_mod_edit_thetafloor;
     theta_ceil = m_mod_edit_thetaceil;
+	if (hv_Threshold_8 != m_mod_edit_threshold)
+	{
+		if (hv_Threshold_8 > 255)
+			hv_Threshold_8 = 254;
+		if (hv_Threshold_8 < 50)
+			hv_Threshold_8 = 50;
+		hv_Threshold_8 = m_mod_edit_threshold;
+	}
 
-	hv_Threshold_8 = m_mod_edit_threshold;
 	hv_Filter_block_radius_8 = m_mod_edit_filter;
 	//编辑框显示中的是实际的裁剪框位置和尺寸,存盘的是压缩后的裁剪框位置和尺寸,所以存盘时要除以压缩比
 	rect_height = m_mod_edit_height / scale;
@@ -1428,10 +1296,30 @@ void CmodbusDlg::OnBnClickedModBtnChange()
 	m_startPos_left_8_y = m_mod_edit_rect_topleft_y / scale;
 	m_startPos_right_8_x = m_mod_edit_right_rect_topleft_x / scale;
 	m_startPos_right_8_y = m_mod_edit_right_rect_topleft_y /scale;
+	if (left_baoguang_time != m_mod_edit_left_baoguang)
+	{
+		if (m_mod_edit_left_baoguang > 1000000)
+			m_mod_edit_left_baoguang = 1000000;
+		if (m_mod_edit_left_baoguang < 60000)
+			m_mod_edit_left_baoguang = 60000;
+
+		left_baoguang_time = m_mod_edit_left_baoguang;
+		leftCam->ObjFeatureControlPtr->GetFloatFeature("ExposureTime")->SetValue(left_baoguang_time);
+	}
+	if (right_baoguang_time != m_mod_edit_right_baoguang)
+	{
+		if (m_mod_edit_right_baoguang > 1000000)
+			m_mod_edit_right_baoguang = 1000000;
+		if (m_mod_edit_right_baoguang < 60000)
+			m_mod_edit_right_baoguang = 60000;
+		right_baoguang_time = m_mod_edit_right_baoguang;
+		rightCam->ObjFeatureControlPtr->GetFloatFeature("ExposureTime")->SetValue(right_baoguang_time);
+	}
+
 
 	file.WirteDocline(backboard, x_floor, x_ceil, y_floor, y_ceil, theta_floor, theta_ceil,
 		hv_Threshold_8, hv_Filter_block_radius_8, rect_height, rect_width, m_startPos_left_8_x,
-		m_startPos_left_8_y, m_startPos_right_8_x, m_startPos_right_8_y);
+		m_startPos_left_8_y, m_startPos_right_8_x, m_startPos_right_8_y,left_baoguang_time,right_baoguang_time);
 }
 
 

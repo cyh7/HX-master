@@ -6,7 +6,6 @@
 #include "CcadDlg.h"
 #include "afxdialogex.h"
 
-#include "drawcad.h"
 #include <windows.h>
 #include <memory>
 #include <string>
@@ -16,12 +15,9 @@
 #include  "layoutinitCad.h"
 
 
-
-
-#define _CRT_SECURE_NO_WARNINGS
-
+using namespace Gdiplus;
+//全局变量
 ULONG_PTR m_gdiplusToken;
-m_mfc_drawer* drawer;
 
 int BadCadNum = 0;
 
@@ -32,10 +28,13 @@ int vecGlueNum = 0;
 WORD GlueTemp[200];//把胶条数据从函数里边提取出来变成全局的，用以发送
 //发送胶条时计数
 int locGlueNum = 0;
+//读取PLC接收到所有图纸之后的确认
 int plcRecNum = 0;
-
 // CcadDlg 对话框
+//cad按钮状态
+bool CadBtnStatus = true;
 CcadDlg* CcadDlg::pCaddlg = NULL;
+
 IMPLEMENT_DYNAMIC(CcadDlg, CDialogEx)
 
 CcadDlg::CcadDlg(CWnd* pParent /*=nullptr*/)
@@ -66,13 +65,13 @@ void CcadDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CcadDlg, CDialogEx)
 	ON_WM_CTLCOLOR()
-	
+
 	ON_BN_CLICKED(IDC_BUTTON_CAD_OPEN, &CcadDlg::OnBnClickedButtonCadOpen)
 	ON_BN_CLICKED(IDC_BUTTON_CAD_DRAW, &CcadDlg::OnBnClickedButtonCadDraw)
 	ON_WM_TIMER()
 	ON_WM_SIZE()
 	ON_WM_SIZING()
-	
+
 	ON_BN_CLICKED(IDC_BUTTON_CAD_SEND, &CcadDlg::OnBnClickedButtonCadSend)
 	ON_WM_PAINT()
 	ON_BN_CLICKED(IDC_CAD_BTN_OPVS, &CcadDlg::OnBnClickedCadBtnOpvs)
@@ -197,10 +196,10 @@ BOOL CcadDlg::OnInitDialog()
 		//设置字体大小
 		m_cad_btn_opmod.setWordSize(200);
 	}
-	
+
 
 	//静态文本字体改变
-	
+
 	f_cad_font.CreateFontW(18,      // nHeight，文字大小
 		0,          // nWidth
 		0,          // nEscapement
@@ -274,6 +273,10 @@ BOOL CcadDlg::OnInitDialog()
 
 	m_cad_hBitmap_logo = (HBITMAP)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDB_HG), IMAGE_BITMAP, 200, 40, LR_DEFAULTCOLOR);
 	m_cad_pic_logo.SetBitmap(m_cad_hBitmap_logo);
+
+
+	//画图设施初始化
+	GraphicInit();
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
@@ -458,7 +461,7 @@ void CcadDlg::SendData(int CommTypeIn, WORD DownAdd, DWORD DownData)
 	//WideCharToMultiByte(CP_ACP, 0, temp, temp.GetLength(), m_str, len, NULL, NULL);
 	//m_str[len + 1] = '\0';
 
-	CmodbusDlg *pdlg = CmodbusDlg::pModbusdlg;
+	CmodbusDlg* pdlg = CmodbusDlg::pModbusdlg;
 	pdlg->m_SerialPort.writeData(SendArray, 8);
 
 	//CPublic::m_SerialPort.writeData(SendArray, 8);
@@ -500,6 +503,11 @@ void CcadDlg::OnBnClickedButtonCadOpen()
 		ShExecInfo.hProcess = NULL;
 
 	}
+	//进行路径规划
+	PathGen p1;
+	p1.ReadAllFiles();
+	p1.RefinePaths();
+	p1.GenerateActualPaths(actual_path_);
 
 	m_CadGlueList.DeleteAllItems(); //清空所有表项
 
@@ -575,34 +583,32 @@ void CcadDlg::OnBnClickedButtonCadOpen()
 		CString name;
 		name.Format(_T("第%d点"), j + 1);
 		m_CadGlueList.InsertItem(j, name);
-		
+
 		a = j * 3;
 
 		m_CadGlueList.SetItemText(j, 1, strDecimals[a]);
 		m_CadGlueList.SetItemText(j, 2, strDecimals[a + 1]);
 
-		if (strDecimals[a + 2] == _T("1.6"))
-		{
-			strDecimals[a + 2] = _T("垂直不喷");
-		}
-		else if (strDecimals[a + 2] == _T("0.1"))
+		
+		if (strDecimals[a + 2] == _T("0.1"))
 		{
 			strDecimals[a + 2] = _T("喷胶");
 		}
 		else if (strDecimals[a + 2] == _T("0.0"))
 		{
-			strDecimals[a + 2] = _T("水平不喷胶");
+			strDecimals[a + 2] = _T("不喷胶");
 		}
 
 
 		m_CadGlueList.SetItemText(j, 3, strDecimals[a + 2]);
 		/*m_CadGlueList.SetItemText(j, 4, strDecimals[a + 3]);
 		m_CadGlueList.SetItemText(j, 5, strTmp[a + 4]);*/
-		
+
 		//a = j * 5;
 	}
-
-	
+	std::vector<CString>().swap(vecResult);
+	std::vector<CString>().swap(strTmp);
+	std::vector<CString>().swap(strDecimals);
 
 }
 
@@ -610,9 +616,7 @@ void CcadDlg::OnBnClickedButtonCadOpen()
 void CcadDlg::OnBnClickedButtonCadDraw()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	drawer = new m_mfc_drawer(this, IDC_STATIC_CAD_PIC);
-	read_cad(&(drawer->a1));//给drawer赋值
-	drawer->clear();
+	ClearPic();
 	SetTimer(1, 200, NULL);
 }
 
@@ -622,127 +626,125 @@ void CcadDlg::OnTimer(UINT_PTR nIDEvent)
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
 	switch (nIDEvent)
 	{
-		case 1:
+	case 1:
+	{
+		if (!DrawLineAnimated())
 		{
-			if (!drawer->draw_line_animated())
-			{
-				KillTimer(1);
-				delete drawer;
-			}
-			break;
+			KillTimer(1);
 		}
-		//发送图纸定时器
-		case 2:
+		break;
+	}
+	//发送图纸定时器
+	case 2:
+	{
+		SendOnce = false;
+		//CString msg;
+		////%02X为16进制显示  %d十进制 %s 字符串
+		//msg.Format(_T("定时器2执行"));
+		//MessageBox(msg);
+		//判断的是上一组已发送的数据的标志，如果没有超时且上一组数据CRC校验正确的话，那么可以进行本次发送
+		m_CadT1 = GetTickCount64();
+		if (m_CadT2 != 0 && OverTime == false && RecMsgFlag == true)
 		{
-			SendOnce = false;
-			//CString msg;
-			////%02X为16进制显示  %d十进制 %s 字符串
-			//msg.Format(_T("定时器2执行"));
-			//MessageBox(msg);
-			//判断的是上一组已发送的数据的标志，如果没有超时且上一组数据CRC校验正确的话，那么可以进行本次发送
-			m_CadT1 = GetTickCount64();
-			if (m_CadT2 != 0 && OverTime == false && RecMsgFlag == true)
+			m_CadT2 = 0;//进入之后把这个时间置为0，用以判断之后的是否断线
+			//如果上一个数据发送成功，那么将BadCadNum置为0
+			BadCadNum = 0;
+			if (locGlueNum < vecGlueNum)
 			{
-				m_CadT2 = 0;//进入之后把这个时间置为0，用以判断之后的是否断线
-				//如果上一个数据发送成功，那么将BadCadNum置为0
-				BadCadNum = 0;
-				if (locGlueNum < vecGlueNum)
-				{
-
-					SendData(1, locGlueNum + 100, GlueTemp[locGlueNum]);
-					locGlueNum++;
-				}
-				else
-				{
-					KillTimer(2);
-					SendOnce = true;
-					SendData(1, 99, locGlueNum / 3);
-					Sleep(50);
-					SendData(1, 78, 21573);
-					//发送完毕之后，可以考虑每次按下发送键的时候把这个置为0，把定位数据置为0，方便下次发送
-					m_CadT2 = GetTickCount64();
-					locGlueNum = 0;
-					//读寄存器收完消息没有
-					Sleep(50);
-					SetTimer(3, 50, NULL);//实际应位30
-					/*CvisionDlg* pvsdlg = CvisionDlg::pVisiondlg;
-					pvsdlg->ReSetTime();*/
-				}
-			}
-			//这里是上一组信息发送有误的情况
-			else
-			{
-				//进入错误阶段，首先错误数累加，每个数据有两次重发机会，
-				BadCadNum++;
-				if (BadCadNum < 4)
-				{
-					//第一个数据出现错误与后边的数据出现错误是一样的处理措施
-					//先减1发送前一个数据
-					locGlueNum = locGlueNum - 1;
-					SendData(1, locGlueNum + 100, GlueTemp[locGlueNum]);
-					//发送完之后做加一处理
-					locGlueNum++;
-				}
-				else
-				{
-
-					//停止发送
-					KillTimer(2);
-					//报错
-					CString msg;
-
-					//%02X为16进制显示  %d十进制 %s 字符串
-					msg.Format(_T("图纸数据发送错误，请检查连接并重新发送！"));
-					AfxMessageBox(msg);
-					locGlueNum = 0;
-
-				}
-			}
-			break;
-		}
-		case 3:
-		{
-			SendOnce = true;
-			ReadStatus = false;
-			SendData(0, 78, 1);//255
-			plcRecNum += 1;//50 * 20 * 3 
-			if (plcRecNum <= 60)
-			{
-				if (PlcCadRecFlag == true)
-				{
-					KillTimer(3);
-					Sleep(50);
-					AfxMessageBox(_T("CAD图纸数据发送完毕"));
-					PlcCadRecFlag = false;
-					locGlueNum = 0;
-					plcRecNum = 0;
-
-					CvisionDlg* pvsdlg = CvisionDlg::pVisiondlg;
-					pvsdlg->ReSetTime();
-
-
-				}
-
+				SendData(1, locGlueNum + 100, GlueTemp[locGlueNum]);
+				locGlueNum++;
 			}
 			else
 			{
-				KillTimer(3);
 				Sleep(50);
-				AfxMessageBox(_T("请重新发送CAD数据!"));
+				KillTimer(2);
+				SendOnce = true;
+				SendData(1, 99, locGlueNum / 3);
+				Sleep(100);
+				SendData(1, 78, 21573);
+				//发送完毕之后，可以考虑每次按下发送键的时候把这个置为0，把定位数据置为0，方便下次发送
+				m_CadT2 = GetTickCount64();
+				locGlueNum = 0;
+				//读寄存器收完消息没有
+				Sleep(100);
+				SetTimer(3, 50, NULL);//实际应位30
+				/*CvisionDlg* pvsdlg = CvisionDlg::pVisiondlg;
+				pvsdlg->ReSetTime();*/
+			}
+		}
+		//这里是上一组信息发送有误的情况
+		else
+		{
+			//进入错误阶段，首先错误数累加，每个数据有两次重发机会，
+			BadCadNum++;
+			if (BadCadNum < 4)
+			{
+				//第一个数据出现错误与后边的数据出现错误是一样的处理措施
+				//先减1发送前一个数据
+				locGlueNum = locGlueNum - 1;
+				SendData(1, locGlueNum + 100, GlueTemp[locGlueNum]);
+				//发送完之后做加一处理
+				locGlueNum++;
+			}
+			else
+			{
 
-				PlcCadRecFlag = false;
-				plcRecNum;
+				//停止发送
+				KillTimer(2);
+				//报错
+				CString msg;
+
+				//%02X为16进制显示  %d十进制 %s 字符串
+				msg.Format(_T("图纸数据发送错误，请检查连接并重新发送！"));
+				MessageBox(msg);
 				locGlueNum = 0;
 
-
-				CvisionDlg* pvsdlg = CvisionDlg::pVisiondlg;
-				pvsdlg->ReSetTime();
 			}
 		}
 		break;
-		
 	}
-	
+	case 3:
+	{
+		SendOnce = true;
+		ReadStatus = false;
+		SendData(0, 78, 1);//255
+		plcRecNum += 1;//50 * 20 * 3 
+		if (plcRecNum <= 60)
+		{
+			if (PlcCadRecFlag == true)
+			{
+				KillTimer(3);
+				Sleep(50);
+				MessageBox(_T("CAD图纸数据发送完毕"));
+				PlcCadRecFlag = false;
+				locGlueNum = 0;
+				plcRecNum = 0;
+
+				CvisionDlg* pvsdlg = CvisionDlg::pVisiondlg;
+				pvsdlg->ReSetTime();
+
+
+			}
+
+		}
+		else
+		{
+			KillTimer(3);
+			Sleep(50);
+			MessageBox(_T("请重新发送CAD数据!"));
+
+			PlcCadRecFlag = false;
+			plcRecNum = 0;
+			locGlueNum = 0;
+
+
+			CvisionDlg* pvsdlg = CvisionDlg::pVisiondlg;
+			pvsdlg->ReSetTime();
+		}
+	}
+	break;
+	}
+
 
 	__super::OnTimer(nIDEvent);
 }
@@ -771,20 +773,22 @@ void CcadDlg::OnSizing(UINT fwSide, LPRECT pRect)
 void CcadDlg::OnBnClickedButtonCadSend()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	
+
 	OverTime = false;
 	BadCadNum = 0;
 	locGlueNum = 0;
 	plcRecNum = 0;
-	//发送cad数据时停掉定时器1
-	CvisionDlg *pvsdlg = CvisionDlg::pVisiondlg;
-	pvsdlg->KillTime1();
 
+	//发送cad数据时停掉定时器1
+	CvisionDlg* pvsdlg = CvisionDlg::pVisiondlg;
+	pvsdlg->KillTime1();
+	//begin ASCII码BG
+	Sleep(100);
 	SendData(1, 76, 18242);
-	Sleep(50);
-	SetTimer(2, 50, NULL);
-	
-	
+	Sleep(100);
+	SetTimer(2, 100, NULL);
+
+
 
 	////send();
 	////settime(3,) //隔100ms判断一次 可以写了
@@ -799,14 +803,14 @@ void CcadDlg::OnBnClickedButtonCadSend()
 	//}
 	//else
 	//	SetTimer(2, 50, NULL);
-	
+
 }
 
 
 BOOL CcadDlg::PreTranslateMessage(MSG* pMsg)
 {
 	// TODO: 在此处添加实现代码.
-	
+
 	if (pMsg->message == WM_KEYDOWN)
 	{
 		if (pMsg->wParam == VK_F1)
@@ -845,20 +849,20 @@ void CcadDlg::OnPaint()
 	//dc.FillSolidRect(rect, RGB(125, 125, 255));
 
 	CDialogEx::OnPaint();
-					   // 不为绘图消息调用 __super::OnPaint()
+	// 不为绘图消息调用 __super::OnPaint()
 }
 
 void CcadDlg::OnBnClickedCadBtnOpmon()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	CHXDlg *p_hxdlg = (CHXDlg*)this->GetParent();
+	CHXDlg* p_hxdlg = (CHXDlg*)this->GetParent();
 	p_hxdlg->ShowMonitor();
 }
 
 void CcadDlg::OnBnClickedCadBtnOpvs()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	CHXDlg *p_hxdlg = (CHXDlg*)this->GetParent();
+	CHXDlg* p_hxdlg = (CHXDlg*)this->GetParent();
 	p_hxdlg->ShowVision();
 }
 
@@ -866,7 +870,7 @@ void CcadDlg::OnBnClickedCadBtnOpvs()
 void CcadDlg::OnBnClickedCadBtnOpmod()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	CHXDlg *p_hxdlg = (CHXDlg*)this->GetParent();
+	CHXDlg* p_hxdlg = (CHXDlg*)this->GetParent();
 	p_hxdlg->ShowModbus();
 }
 
@@ -874,7 +878,7 @@ void CcadDlg::OnBnClickedCadBtnOpmod()
 void CcadDlg::OnBnClickedCadBtnOpdata()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	CHXDlg *p_hxdlg = (CHXDlg*)this->GetParent();
+	CHXDlg* p_hxdlg = (CHXDlg*)this->GetParent();
 	p_hxdlg->ShowData();
 }
 
@@ -890,10 +894,10 @@ BOOL CcadDlg::OnHelpInfo(HELPINFO* pHelpInfo)
 
 
 
-// 禁用发送图纸按钮
 void CcadDlg::BanBtnSend()
 {
 	// TODO: 在此处添加实现代码.
+	CadBtnStatus = false;
 	m_cad_btn_send.EnableWindow(FALSE);
 	//设置Button Up的背景色
 	m_cad_btn_send.SetUpColor(RGB(180, 180, 165));
@@ -907,10 +911,11 @@ void CcadDlg::BanBtnSend()
 }
 
 
-// 使能图纸发送按钮
+
 void CcadDlg::EnableBtnSend()
 {
 	// TODO: 在此处添加实现代码.
+	CadBtnStatus = true;
 	m_cad_btn_send.EnableWindow(TRUE);
 	//设置Button Up的背景色
 	m_cad_btn_send.SetUpColor(RGB(2, 158, 160));
@@ -921,4 +926,68 @@ void CcadDlg::EnableBtnSend()
 	GetDlgItem(IDC_BUTTON_CAD_SEND)->GetWindowRect(brect);
 	ScreenToClient(brect);
 	InvalidateRect(brect);
+}
+
+
+/////////////////////////////////////////////////画图所需要的东西
+
+void CcadDlg::GraphicInit()
+{
+	pen_color_ = Color::Black;
+	pen_width_ = 2.0;
+	graphics_ptr_.reset(new Graphics(GetDlgItem(IDC_STATIC_CAD_PIC)->GetDC()->m_hDC));
+	GetDlgItem(IDC_STATIC_CAD_PIC)->GetClientRect(&pic_rect_);
+}
+
+void CcadDlg::ClearPic()
+{
+	graphics_ptr_->Clear(Color::White);
+}
+
+void CcadDlg::DrawLine(const Gdiplus::ARGB& color, const float& width, const Gdiplus::Point& p1, const Gdiplus::Point& p2)
+{
+	Pen pen(Color(color), width);
+	graphics_ptr_->DrawLine(&pen, p1, p2);
+}
+
+void CcadDlg::DrawLineOffset(const double& width_max, const double& height_max, const int& x1, const int& y1, const int& x2, const int& y2)
+{
+	const float scale_x = (pic_rect_.Width() * 0.8f) / width_max;
+	const float scale_y = (pic_rect_.Height() * 0.8f) / height_max;
+
+	Gdiplus::Point offset(pic_rect_.Width() / 10, pic_rect_.Height() / 10);
+
+	Gdiplus::Point p1(x1 * scale_x, y1 * scale_y);
+	Gdiplus::Point p2(x2 * scale_x, y2 * scale_y);
+	DrawLine(pen_color_, pen_width_, p1 + offset, p2 + offset);
+}
+
+bool CcadDlg::DrawLineAnimated()
+{
+	static size_t i = 0;
+	if (i < actual_path_.len)
+	{
+		if (i % 2)
+		{
+			pen_color_ = Color::Black;
+		}
+		else
+		{
+			pen_color_ = Color::Red;
+		}
+		int tmp_sx = 0, tmp_sy = 0, tmp_ex = 0, tmp_ey = 0;
+		tmp_sx = actual_path_.real_path[i].sx - actual_path_.rsx;
+		tmp_sy = abs(actual_path_.real_path[i].sy - int(actual_path_.height) - actual_path_.rsy);
+		tmp_ex = actual_path_.real_path[i].ex - actual_path_.rsx;
+		tmp_ey = abs(actual_path_.real_path[i].ey - int(actual_path_.height) - actual_path_.rsy);
+		DrawLineOffset((double)actual_path_.width, (double)actual_path_.height, tmp_sx, tmp_sy, tmp_ex, tmp_ey);
+		i++;
+	}
+	else
+	{
+		i = 0;
+		return false;
+	}
+	return true;
+
 }

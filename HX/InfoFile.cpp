@@ -43,7 +43,7 @@ void CInfoFile::WritePwd(char* name, char* pwd)
 //读取商品信息
 void CInfoFile::ReadDocline(CString &type,double &x_floor, double &x_ceil, double &y_floor, double &y_ceil, double &theta_floor, double &theta_ceil, int& hv_Threshold_8,
 	int& hv_Filter_block_radius_8, int& rect_height, int& rect_width, int& m_startPos_left_8_x,
-	int& m_startPos_left_8_y, int& m_startPos_right_8_x, int& m_startPos_right_8_y)
+	int& m_startPos_left_8_y, int& m_startPos_right_8_x, int& m_startPos_right_8_y, int &left_baoguang_time, int &right_baoguang_time)
 {
 	std::vector<CString> vecResult;
 	std::vector<CString> strTmp;
@@ -96,6 +96,9 @@ void CInfoFile::ReadDocline(CString &type,double &x_floor, double &x_ceil, doubl
 	m_startPos_right_8_x = _wtof(strTmp[13]);
 	m_startPos_right_8_y = _wtof(strTmp[14]);
 
+	left_baoguang_time = _wtof(strTmp[15]);
+	right_baoguang_time = _wtof(strTmp[16]);
+
 	/*tmp.frame_length = _wtof(strTmp[7]);
 	tmp.frame_width = _wtof(strTmp[8]);
 	tmp.image_threshold = _wtof(strTmp[9]);*/
@@ -105,7 +108,7 @@ void CInfoFile::ReadDocline(CString &type,double &x_floor, double &x_ceil, doubl
 //写入文件
 void CInfoFile::WirteDocline(CString &type, double &x_floor, double &x_ceil, double &y_floor, double &y_ceil, double &theta_floor, double &theta_ceil,int &hv_Threshold_8,
 	int &hv_Filter_block_radius_8,int &rect_height,int &rect_width, int &m_startPos_left_8_x,
-	int &m_startPos_left_8_y, int &m_startPos_right_8_x, int &m_startPos_right_8_y)
+	int &m_startPos_left_8_y, int &m_startPos_right_8_x, int &m_startPos_right_8_y, int &left_baoguang_time, int &right_baoguang_time)
 {
 	
 	//读取区域设定
@@ -116,7 +119,12 @@ void CInfoFile::WirteDocline(CString &type, double &x_floor, double &x_ceil, dou
 	CStdioFile csdioFile;
 	BOOL flag = csdioFile.Open(_T(".\\stock.txt"), CFile::modeReadWrite);
 	//写入简体中文数据
-	csdioFile.WriteString(type);
+	if (type.IsEmpty())
+	{
+		csdioFile.WriteString(_T("无"));
+	}
+	else
+		csdioFile.WriteString(type);
 	
 	//恢复区域设定
 	setlocale(LC_CTYPE, old_locale);
@@ -156,9 +164,12 @@ void CInfoFile::WirteDocline(CString &type, double &x_floor, double &x_ceil, dou
 	csdioFile.WriteString(IntToCString(m_startPos_right_8_x));
 	csdioFile.WriteString(_T(" "));
 	csdioFile.WriteString(IntToCString(m_startPos_right_8_y));
+	csdioFile.WriteString(_T(" "));
+	csdioFile.WriteString(IntToCString(left_baoguang_time));
+	csdioFile.WriteString(_T(" "));
+	csdioFile.WriteString(IntToCString(right_baoguang_time));
 
-
-	csdioFile.WriteString(_T("\r\n"));
+	//csdioFile.WriteString(_T("\r\n"));
 	/*MidData = SendFreqData[4];
 	char MyChar[10];
 	_itoa_s(MidData, MyChar, 10);*/
@@ -217,9 +228,14 @@ CString CInfoFile::DoubleToCString(double x)
 {
 	// TODO: 在此处添加实现代码.
 
-	char temp[10];
+	char temp[15];
 	CString sTemp;
-	_gcvt_s(temp, 10, x, 8);//浮点型转为字符串
+	if ((x - (int)x) == 0)
+	{
+		_itoa_s(x, temp, 10);
+	}
+	else
+		_gcvt_s(temp, 15, x, 10);//浮点型转为字符串
 	sTemp = CA2CT(temp);
 	return sTemp;
 }

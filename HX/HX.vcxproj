@@ -23,7 +23,7 @@
     <ProjectGuid>{F5092336-A71D-4AA9-A6FB-F9CBC2304E8A}</ProjectGuid>
     <Keyword>MFCProj</Keyword>
     <RootNamespace>HX</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -44,14 +44,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
@@ -122,7 +122,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(HALCONROOT)/include;$(HALCONROOT)/include/halconcpp</AdditionalIncludeDirectories>
     </ClCompile>
@@ -210,7 +210,6 @@
     <ClInclude Include="CMyButton.h" />
     <ClInclude Include="CPublic.h" />
     <ClInclude Include="CvisionDlg.h" />
-    <ClInclude Include="drawcad.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="HX.h" />
     <ClInclude Include="HXDlg.h" />
@@ -222,6 +221,7 @@
     <ClInclude Include="layoutinitMonitor.h" />
     <ClInclude Include="layoutinitVision.h" />
     <ClInclude Include="opencv_include.h" />
+    <ClInclude Include="PathGen.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="STL_include.h" />
@@ -275,7 +275,6 @@
     <ClCompile Include="CvisionDlg.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">pch.h</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="drawcad.cpp" />
     <ClCompile Include="HX.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -283,6 +282,9 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="InfoFile.cpp" />
+    <ClCompile Include="PathGen.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">pch.h</PrecompiledHeaderFile>
@@ -304,6 +306,7 @@
     <Image Include="res\gdut.ico" />
     <Image Include="res\gray.bmp" />
     <Image Include="res\gray.ico" />
+    <Image Include="res\green.ico" />
     <Image Include="res\highblue.ico" />
     <Image Include="res\HX.ico" />
     <Image Include="res\modbus.ico" />

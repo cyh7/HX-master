@@ -29,6 +29,8 @@
 #define IDI_HIGHBLUE                    161
 #define IDB_BITMAP1                     162
 #define IDB_BITMAP2                     163
+#define IDI_ICON2                       164
+#define IDI_GREEN                       164
 #define IDC_TAB1                        1000
 #define IDC_COMBO1                      1001
 #define IDC_COMBO2                      1002
@@ -129,10 +131,13 @@
 #define IDC_DAT_BTN_OPDAT               1073
 #define IDC_MON_STATIC_GLUE             1074
 #define IDC_STATIC16                    1074
+#define IDC_VS_STATIC_LOCATE            1074
 #define IDC_MON_STATIC_STOP             1075
 #define IDC_STATIC17                    1075
+#define IDC_VS_STATIC_GLUE              1075
 #define IDC_MON_STATIC_TYPE             1076
 #define IDC_STATIC18                    1076
+#define IDC_VS_STATIC_STOP              1076
 #define IDC_MON_STATIC_BATCH            1077
 #define IDC_STATIC19                    1077
 #define IDC_MON_EDIT_TYPE               1078
@@ -157,9 +162,13 @@
 #define IDC_EDIT_THETAFLOOR2            1086
 #define IDC_MON_PIC_PLC                 1087
 #define IDC_MON_PIC_GLUE                1088
+#define IDC_MON_PIC_PLC2                1088
+#define IDC_VS_PIC_LOCATE               1088
 #define IDC_MON_PIC_STOP                1089
+#define IDC_VS_PIC_GLUE2                1089
 #define IDC_MON_BTN_OPVS                1090
 #define IDC_STATIC22                    1090
+#define IDC_VS_PIC_STOP2                1090
 #define IDC_MON_BTN_OPCAD               1091
 #define IDC_EDIT_THETACEILING2          1091
 #define IDC_MON_BTN_OPDATA              1092
@@ -190,9 +199,13 @@
 #define IDC_EDIT_THETAFLOOR7            1105
 #define IDC_VS_PIC_LOGO                 1106
 #define IDC_DATA_PIC_LOGO               1107
+#define IDC_STATIC29                    1107
 #define IDC_CAD_PIC_LOGO                1108
+#define IDC_STATIC30                    1108
 #define IDC_VS_BTN_RESEND               1109
+#define IDC_EDIT_THETAFLOOR8            1109
 #define IDC_VS_8_LEFT_PIC               1110
+#define IDC_EDIT_THETAFLOOR9            1110
 #define IDC_VS_8_RIGHT_PIC              1111
 #define IDC_LIST3                       1112
 #define IDC_VS_LIST_LOCATE              1112
@@ -202,6 +215,11 @@
 #define IDC_VS_STATIC_TEST2             1116
 #define IDC_VS_EDIT_TEST1               1117
 #define IDC_VS_EDIT_TEST2               1118
+#define IDC_VS_STATIC_CAMSTATUS         1119
+#define IDC_VS_PIC_CAM_STATUS           1120
+#define IDC_VS_PIC_CAMSTATUS            1121
+#define IDC_VS_STATIC_PLC               1122
+#define IDC_VS_PIC_PLC                  1123
 #define ID_32771                        32771
 #define ID_32772                        32772
 #define ID_32773                        32773
@@ -225,9 +243,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        164
+#define _APS_NEXT_RESOURCE_VALUE        165
 #define _APS_NEXT_COMMAND_VALUE         32795
-#define _APS_NEXT_CONTROL_VALUE         1116
+#define _APS_NEXT_CONTROL_VALUE         1124
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

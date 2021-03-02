@@ -168,4 +168,6 @@ public:
 	int m_mod_edit_rect_topleft_y;
 	int m_mod_edit_right_rect_topleft_x;
 	int m_mod_edit_right_rect_topleft_y;
+	int m_mod_edit_left_baoguang;
+	int m_mod_edit_right_baoguang;
 };

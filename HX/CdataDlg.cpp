@@ -7,8 +7,12 @@
 #include "afxdialogex.h"
 #include "layoutinitData.h"
 #include "HXDlg.h"
-
+ 
+//正在插入数据标志位
+bool IsInsert = false;
+//查询失败标志位
 bool IsConnOpen = false;
+//连接状态标志位
 bool ConnectSucces = false;
 CdataDlg *CdataDlg::pDatadlg = NULL;
 // CdataDlg 对话框
@@ -75,9 +79,9 @@ BOOL CdataDlg::OnInitDialog()
 	CDialogEx::OnInitDialog();
 	pDatadlg = this;
 	// TODO:  在此添加额外的初始化
-	m_dat_list.InsertColumn(0, TEXT("日期"), 0, 120);
+	m_dat_list.InsertColumn(0, TEXT("日期"), 0, 210);
 	m_dat_list.InsertColumn(1, TEXT("背板型号"), 0, 120);
-	m_dat_list.InsertColumn(2, TEXT("喷涂批次"), 0, 120);
+	m_dat_list.InsertColumn(2, TEXT("喷涂批次"), 0, 80);
 	m_dat_list.InsertColumn(3, TEXT("X坐标"), 0, 100);
 	m_dat_list.InsertColumn(4, TEXT("Y坐标"), 0, 100);
 	m_dat_list.InsertColumn(5, TEXT("偏转角"), 0, 100);
@@ -256,9 +260,9 @@ BOOL CdataDlg::OnInitDialog()
 		//查询数据
 		SelectDB();
 		//获取数据;
-		//GetDataFromDB();
+		GetDataFromDB();
 		//显示数据
-		//ShowInfo();
+		ShowInfo();
 	}
 
 	////查询数据
@@ -628,6 +632,8 @@ BOOL CdataDlg::DeleteDB()
 void CdataDlg::OnBnClickedDatBtnQuery()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	if (IsInsert == true)
+		Sleep(50);
 	SelectDateDB();
 	//如果查询超过七天,return
 	if (QueryDayFlag == false)
@@ -688,6 +694,8 @@ BOOL CdataDlg::PreTranslateMessage(MSG* pMsg)
 void CdataDlg::OnBnClickedDatBtnDelete()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	if (IsInsert == true)
+		Sleep(50);
 	DeleteDB();
 	m_dat_list.DeleteAllItems(); //清空所有表项
 	//查询数据
@@ -727,6 +735,8 @@ BOOL CdataDlg::ClearDB()
 void CdataDlg::OnBnClickedDatBtnClear()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	if (IsInsert == true)
+		Sleep(50);
 	ClearDB(); 
 	m_dat_list.DeleteAllItems();
 	UpdateData(FALSE);
@@ -755,7 +765,7 @@ BOOL CdataDlg::InsertDB(CString time, CString type, DWORD batch, double x, doubl
 		MessageBox(TEXT("插入数据失败！"));
 		return FALSE;
 	}*/
-
+	IsInsert = true;
 	try
 	{
 		if (mysql_query(&m_sqlCon, query))
@@ -765,6 +775,6 @@ BOOL CdataDlg::InsertDB(CString time, CString type, DWORD batch, double x, doubl
 	{
 		IsConnOpen = false;
 	}
-	
+	IsInsert = false;
 	return TRUE;
 }

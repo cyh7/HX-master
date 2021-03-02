@@ -25,14 +25,19 @@ void InitLayoutVision(CLayout& layout, CWnd* parent)
 
 	layout.RegisterControl(IDC_VS_8_RIGHT_PIC, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_VS_8_LEFT_PIC, CLayout::e_stretch_all);
-	layout.RegisterControl(IDC_VS_LIST_LOCATE, CLayout::e_stretch_all);
-	layout.RegisterControl(IDC_BUTTON1, CLayout::e_stretch_all);
+	
 
-
-	layout.RegisterControl(IDC_VS_STATIC_TEST1, CLayout::e_stretch_all);
-	layout.RegisterControl(IDC_VS_STATIC_TEST2, CLayout::e_stretch_all);
-	layout.RegisterControl(IDC_VS_EDIT_TEST1, CLayout::e_stretch_all);
-	layout.RegisterControl(IDC_VS_EDIT_TEST2, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_PIC_CAMSTATUS, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_PIC_LOCATE, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_STATIC_CAMSTATUS, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_STATIC_LOCATE, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_STATIC_PLC, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_STATIC_GLUE, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_STATIC_STOP, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_PIC_STOP2, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_PIC_PLC, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_PIC_GLUE2, CLayout::e_stretch_all);
+	
 }
 
 #endif
