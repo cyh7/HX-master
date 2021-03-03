@@ -434,9 +434,10 @@ UINT ThreadRightLocation(LPVOID param)
 
 UINT ThreadLightChange(LPVOID param)
 {
+	CvisionDlg* pcollectdlg = CvisionDlg::pVisiondlg;
 	while (1)
 	{
-		StatusChange();
+		pcollectdlg->StatusChange();
 		Sleep(1000);
 	}
 	AfxEndThread(0);
@@ -1489,7 +1490,8 @@ BOOL CvisionDlg::OnHelpInfo(HELPINFO* pHelpInfo)
 void CvisionDlg::OnBnClickedVsBtnResend()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	SetTimer(3, 10000, NULL);
+	//SetTimer(3, 10000, NULL);
+	ArriveFlag = true;
 }
 
 
