@@ -432,6 +432,16 @@ UINT ThreadRightLocation(LPVOID param)
 	return 0;
 }
 
+UINT ThreadLightChange(LPVOID param)
+{
+	while (1)
+	{
+		StatusChange();
+		Sleep(1000);
+	}
+	AfxEndThread(0);
+	return 0;
+}
 // CvisionDlg 对话框
 
 IMPLEMENT_DYNAMIC(CvisionDlg, CDialogEx)
@@ -724,7 +734,7 @@ BOOL CvisionDlg::OnInitDialog()
 	
 	HANDLE hthreadRightLocation = AfxBeginThread(ThreadRightLocation, this, THREAD_PRIORITY_HIGHEST);
 	HANDLE hthreadLeftLocation = AfxBeginThread(ThreadLeftLocation, this, THREAD_PRIORITY_HIGHEST);
-	
+	HANDLE hthreadLightChange = AfxBeginThread(ThreadLightChange, this, THREAD_PRIORITY_LOWEST);
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
 }
@@ -1003,7 +1013,7 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 				}
 
 			}
-			StatusChange();
+			//StatusChange();
 			break;
 		}
 		case 2:
