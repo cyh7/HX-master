@@ -1491,8 +1491,8 @@ BOOL CvisionDlg::OnHelpInfo(HELPINFO* pHelpInfo)
 void CvisionDlg::OnBnClickedVsBtnResend()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	SetTimer(2, 50, NULL);
-	//ArriveFlag = true;
+	//SetTimer(2, 50, NULL);
+	ArriveFlag = true;
 }
 
 
@@ -2090,7 +2090,7 @@ void CvisionDlg::OnAllLeftLocate()
 		if ((!flag_left_locate_error)&& (!flag_right_locate_error))
 		{
 
-
+			ANGLE = -atan((ROW_RIGHT_8 - ROW_LEFT_8) / (COL_RIGHT_8 - COL_LEFT_8));
 			//OnShowList();
 			//将定位数据传给数据库
 			vs_x = ROW_LEFT_8;
@@ -2183,6 +2183,7 @@ void CvisionDlg::OnAllRightLocate()
 		flag_right_locate_begin = 0;
 		if ((!flag_left_locate_error) && (!flag_right_locate_error))
 		{
+			ANGLE = -atan((ROW_RIGHT_8 - ROW_LEFT_8) / (COL_RIGHT_8 - COL_LEFT_8));
 			//OnShowList();
 			//将定位数据传给数据库
 			vs_x = ROW_LEFT_8;
