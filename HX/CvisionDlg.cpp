@@ -1055,7 +1055,7 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 			else
 			{
 				BadVisionNum++;
-				if (BadVisionNum < 4)
+				if (BadVisionNum < 3)
 				{
 					//第一个数据出现错误与后边的数据出现错误是一样的处理措施
 					//先减1发送前一个数据
