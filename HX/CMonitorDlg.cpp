@@ -68,7 +68,7 @@ BOOL CMonitorDlg::OnInitDialog()
 
 	// TODO:  在此添加额外的初始化
 	m_hIconRed = (HICON)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDI_RED), IMAGE_ICON, 40, 40, LR_DEFAULTCOLOR);
-	m_hIconBlue = (HICON)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDI_BLUE), IMAGE_ICON, 40, 40, LR_DEFAULTCOLOR);
+	m_hIconBlue = (HICON)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDI_GREEN), IMAGE_ICON, 40, 40, LR_DEFAULTCOLOR);
 	m_hIconYellow = (HICON)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDI_YELLOW), IMAGE_ICON, 40, 40, LR_DEFAULTCOLOR);
 	m_hIconGray = (HICON)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDI_GRAY), IMAGE_ICON, 40, 40, LR_DEFAULTCOLOR);
 

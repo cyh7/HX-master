@@ -435,12 +435,12 @@ UINT ThreadRightLocation(LPVOID param)
 UINT ThreadLightChange(LPVOID param)
 {
 	CvisionDlg* pcollectdlg = CvisionDlg::pVisiondlg;
-	while (1)
+	while (!exitFlag)
 	{
 		pcollectdlg->StatusChange();
 		Sleep(1000);
 	}
-	AfxEndThread(0);
+	//AfxEndThread(0);
 	return 0;
 }
 // CvisionDlg 对话框
@@ -1059,7 +1059,8 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 				{
 					//第一个数据出现错误与后边的数据出现错误是一样的处理措施
 					//先减1发送前一个数据
-					LocVisionNum = LocVisionNum - 1;
+					if(LocVisionNum >=1)
+						LocVisionNum = LocVisionNum - 1;
 					//寄存器地址  发送的数据根据LocVisionNum来定
 
 					//SendData(1, , );
@@ -1490,8 +1491,8 @@ BOOL CvisionDlg::OnHelpInfo(HELPINFO* pHelpInfo)
 void CvisionDlg::OnBnClickedVsBtnResend()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	//SetTimer(3, 10000, NULL);
-	ArriveFlag = true;
+	SetTimer(2, 50, NULL);
+	//ArriveFlag = true;
 }
 
 

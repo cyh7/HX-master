@@ -961,7 +961,7 @@ void CmodbusDlg::OnReceive()
 						PlcAskFlag = true;
 						//ASCII码对应CR
 						SendData(1, 75, 21059);
-						Sleep(40);
+						Sleep(50);
 					}
 					else
 						PlcAskFlag = false;
