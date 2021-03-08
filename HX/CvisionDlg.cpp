@@ -15,7 +15,7 @@
 using namespace HalconCpp;
 #define DATA_FOLDER "D://HX-master/HX-master/HX/"
 #define DATA_FOLDERs "D:/HX-master/HX-master/HX/"
-
+//11
 
 //打开相机成功标志位
 bool flag_open_cam = false;
