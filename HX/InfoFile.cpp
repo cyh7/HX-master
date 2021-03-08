@@ -244,9 +244,7 @@ CString CInfoFile::DoubleToCString(double x)
 CString CInfoFile::IntToCString(int x)
 {
 	// TODO: 在此处添加实现代码.
-	char temp[1024];
 	CString sTemp;
-	_itoa_s(x, temp, 10);
-	sTemp = temp;
+	sTemp.Format(_T("%d"),x);
 	return sTemp;
 }

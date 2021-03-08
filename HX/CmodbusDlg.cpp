@@ -1337,7 +1337,7 @@ BOOL CmodbusDlg::OnHelpInfo(HELPINFO* pHelpInfo)
 void CmodbusDlg::JudgeStatus()
 {
 	// TODO: 在此处添加实现代码.
-	if ((vs_x >= x_floor && vs_x <= x_ceil) && (vs_y >= x_floor && vs_y <= y_ceil) && (vs_theta >= theta_floor && vs_theta <= theta_ceil))
+	if ((vs_x >= x_floor && vs_x <= x_ceil) && (vs_y >= y_floor && vs_y <= y_ceil) && (vs_theta >= theta_floor && vs_theta <= theta_ceil))
 	{
 		data_good = _T("良品");
 	}

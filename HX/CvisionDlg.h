@@ -134,4 +134,7 @@ public:
 	CStatic m_vs_pic_plc;
 	CStatic m_vs_pic_glue;
 	CStatic m_vs_pic_stop;
+	DOUBLE m_vs_edit_x;
+	DOUBLE m_vs_edit_y;
+	DOUBLE m_vs_edit_theta;
 };

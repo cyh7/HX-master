@@ -37,6 +37,14 @@ void InitLayoutVision(CLayout& layout, CWnd* parent)
 	layout.RegisterControl(IDC_VS_PIC_STOP2, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_VS_PIC_PLC, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_VS_PIC_GLUE2, CLayout::e_stretch_all);
+
+	layout.RegisterControl(IDC_VS_STATIC_COORD, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_STATIC_X, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_STATIC_Y, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_STATIC_THETA, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_EDIT_X, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_EDIT_Y, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_VS_EDIT_THETA, CLayout::e_stretch_all);
 	
 }
 

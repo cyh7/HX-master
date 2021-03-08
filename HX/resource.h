@@ -220,6 +220,13 @@
 #define IDC_VS_PIC_CAMSTATUS            1121
 #define IDC_VS_STATIC_PLC               1122
 #define IDC_VS_PIC_PLC                  1123
+#define IDC_VS_STATIC_COORD             1124
+#define IDC_VS_STATIC_X                 1125
+#define IDC_VS_STATIC_Y                 1126
+#define IDC_VS_STATIC_THETA             1127
+#define IDC_VS_EDIT_X                   1128
+#define IDC_VS_EDIT_Y                   1129
+#define IDC_VS_EDIT_THETA               1130
 #define ID_32771                        32771
 #define ID_32772                        32772
 #define ID_32773                        32773
@@ -245,7 +252,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        165
 #define _APS_NEXT_COMMAND_VALUE         32795
-#define _APS_NEXT_CONTROL_VALUE         1124
+#define _APS_NEXT_CONTROL_VALUE         1131
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

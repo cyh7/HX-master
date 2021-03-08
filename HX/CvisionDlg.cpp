@@ -480,6 +480,9 @@ void CvisionDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_VS_PIC_PLC, m_vs_pic_plc);
 	DDX_Control(pDX, IDC_VS_PIC_GLUE2, m_vs_pic_glue);
 	DDX_Control(pDX, IDC_VS_PIC_STOP2, m_vs_pic_stop);
+	DDX_Text(pDX, IDC_VS_EDIT_X, m_vs_edit_x);
+	DDX_Text(pDX, IDC_VS_EDIT_Y, m_vs_edit_y);
+	DDX_Text(pDX, IDC_VS_EDIT_THETA, m_vs_edit_theta);
 }
 
 
@@ -623,6 +626,11 @@ BOOL CvisionDlg::OnInitDialog()
 		GetDlgItem(IDC_VS_STATIC_PLC)->SetFont(&f_vs_name, false);
 		GetDlgItem(IDC_VS_STATIC_GLUE)->SetFont(&f_vs_name, false);
 		GetDlgItem(IDC_VS_STATIC_STOP)->SetFont(&f_vs_name, false);
+
+		GetDlgItem(IDC_VS_STATIC_COORD)->SetFont(&f_vs_name, false);
+		GetDlgItem(IDC_VS_STATIC_X)->SetFont(&f_vs_name, false);
+		GetDlgItem(IDC_VS_STATIC_Y)->SetFont(&f_vs_name, false);
+		GetDlgItem(IDC_VS_STATIC_THETA)->SetFont(&f_vs_name, false);
 	}
 	
 	
@@ -758,8 +766,9 @@ HBRUSH CvisionDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 		//pDC-> SetBkColor(RGB(0, 0, 255));  //字体背景色
 		return (HBRUSH)m_Brush.GetSafeHandle();
 	}
-	if (pWnd->GetDlgCtrlID() == IDC_VS_EDIT_TYPE || IDC_VS_EDIT_BATCH)
+	if (pWnd->GetDlgCtrlID() == IDC_VS_EDIT_TYPE || IDC_VS_EDIT_BATCH || IDC_VS_EDIT_X || IDC_VS_EDIT_Y || IDC_VS_EDIT_THETA)
 	{
+		
 		pDC->SetBkMode(TRANSPARENT);
 		//pDC->SetTextColor(RGB(50, 50, 200));  //字体颜色
 		//pDC->SetBkColor(RGB(240, 240, 220));   //字体背景色
@@ -974,6 +983,10 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 			m_vs_edit_batch = SprayBatch;
 			//backboard背板型号
 			m_vs_edit_type = backboard;
+			//
+			m_vs_edit_x = vs_x;
+			m_vs_edit_y = vs_y;
+			m_vs_edit_theta = vs_theta;
 			UpdateData(FALSE);
 
 			SendOnce_Vision = true;
@@ -2229,6 +2242,7 @@ void CvisionDlg::OnAllRightLocate()
 void CvisionDlg::StatusChange()
 {
 	// TODO: 在此处添加实现代码
+
 	if (flag_open_cam == true)
 	{
 		m_vs_pic_camstatus.SetIcon(m_vs_hIconGreen);
