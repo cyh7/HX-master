@@ -117,7 +117,7 @@ void CInfoFile::WirteDocline(CString &type, double &x_floor, double &x_ceil, dou
 	setlocale(LC_CTYPE, "chs");
 	//创建文件并以文本方式打开
 	CStdioFile csdioFile;
-	BOOL flag = csdioFile.Open(_T(".\\stock.txt"), CFile::modeReadWrite);
+	BOOL flag = csdioFile.Open(_T(".\\stock.txt"), CFile::modeCreate |CFile::modeReadWrite);
 	//写入简体中文数据
 	if (type.IsEmpty())
 	{
