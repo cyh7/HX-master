@@ -681,7 +681,8 @@ void CcadDlg::OnTimer(UINT_PTR nIDEvent)
 			{
 				//第一个数据出现错误与后边的数据出现错误是一样的处理措施
 				//先减1发送前一个数据
-				locGlueNum = locGlueNum - 1;
+				if (locGlueNum >= 1)
+					locGlueNum = locGlueNum - 1;
 				SendData(1, locGlueNum + 100, GlueTemp[locGlueNum]);
 				//发送完之后做加一处理
 				locGlueNum++;
