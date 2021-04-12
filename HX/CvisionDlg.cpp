@@ -1091,7 +1091,12 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 					LocVisionNum = 0;
 					BadVisionNum = 0;
 					//%02X为16进制显示  %d十进制 %s 字符串
-					msg.Format(_T("视觉数据发送错误，请检查连接并重启！"));
+					//ascii码含义ER 高八位R低八位E
+					SendData(1, 73, 21061);
+					Sleep(100);
+					ReSetTime();
+					Sleep(50);
+					msg.Format(_T("视觉数据发送错误，请检查连接并操作PLC重新识别发送！"));
 					AfxMessageBox(msg);
 
 				}
