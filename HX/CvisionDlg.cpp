@@ -2132,7 +2132,11 @@ void CvisionDlg::OnAllLeftLocate()
 			Result[1] = -1;
 			Result[2] = -1;
 			
+			//发送完错误信号 开启查询定时器 等待PLC按下重新识别按钮
+			Sleep(100);
 			SendData(1, 73, 21061);
+			Sleep(50);
+			ReSetTime();
 			//将所有定位数据置零
 			OnInitLocateData();
 			//AfxMessageBox(_T("图像定位失败"));
@@ -2224,7 +2228,12 @@ void CvisionDlg::OnAllRightLocate()
 			Result[0] = -1;
 			Result[1] = -1;
 			Result[2] = -1;
+
+			//发送完错误信号 开启查询定时器 等待PLC按下重新识别按钮
+			Sleep(100);
 			SendData(1, 73, 21061);
+			Sleep(50);
+			ReSetTime();
 			//将所有定位数据置零
 			OnInitLocateData();
 			//AfxMessageBox(_T("图像定位失败"));
