@@ -94,6 +94,9 @@ double ROW_RIGHT_8;
 double COL_RIGHT_8;
 double ANGLE;
 
+//定义左右角点的距离
+double Distance;
+
 //定义用于计算左图角点的临时变量
 double a11, b11, c11, a21, b21, c21, d1;
 double x11, y11, x21, y21, x31, y31, x41, y41;
@@ -1562,6 +1565,7 @@ void CvisionDlg::OnShowLeftPic()
 	m_endPos_left_8 = { m_endPos_left_8_x , m_endPos_left_8_y };
 
 	dc_left_8_ptr->SelectObject(&pen_left_8);//选择画笔
+	//在图片上画出裁剪框
 	dc_left_8_ptr->MoveTo(m_startPos_left_8);
 	dc_left_8_ptr->LineTo(m_startPos_left_8_x, m_endPos_left_8_y);
 	dc_left_8_ptr->LineTo(m_endPos_left_8_x, m_endPos_left_8_y);
@@ -1698,6 +1702,7 @@ void CvisionDlg::OnRightCollectAndCompress()
 	try
 	{
 		rightCam->m_frame_ready_;
+		Sleep(100);
 		ReadImage(&ho_image_right_8, "D:/HX-master/HX-master/HX/view2.bmp");
 		
 	}
@@ -2110,18 +2115,32 @@ void CvisionDlg::OnAllLeftLocate()
 
 			ANGLE = -atan((ROW_RIGHT_8 - ROW_LEFT_8) / (COL_RIGHT_8 - COL_LEFT_8));
 			//OnShowList();
-			//将定位数据传给数据库
-			vs_x = ROW_LEFT_8;
-			vs_y = COL_LEFT_8;
-			vs_theta = ANGLE;
-			//将定位数据传给PLC
-			Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X*10);
-			Result[1] = (int)(COL_LEFT_8 * 10 - BIAO_Y*10);
-			Result[2] = (int)(ANGLE * 10000);
-			SetTimer(2, 50, NULL);
-			//将所有定位数据置零
-			OnInitLocateData();
+
+			//计算左右角点的距离，方便和CAD给出的数据进行比较
+			Distance = sqrt((ROW_RIGHT_8 - ROW_LEFT_8) * (ROW_RIGHT_8 - ROW_LEFT_8) + (COL_RIGHT_8 - COL_LEFT_8)*(COL_RIGHT_8 - COL_LEFT_8));
+			if (fabs(Distance - CADdata) > 3.00)
+			{
+				locate_times_error++;
+				flag_right_locate_error = true;
+			}
+
+			if (fabs(Distance - CADdata) <= 3.00)
+			{
+				//将定位数据传给数据库
+				vs_x = ROW_LEFT_8;
+				vs_y = COL_LEFT_8;
+				vs_theta = ANGLE;
+				//将定位数据传给PLC
+				Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X*10);
+				Result[1] = (int)(COL_LEFT_8 * 10 - BIAO_Y*10);
+				Result[2] = (int)(ANGLE * 10000);
+				SetTimer(2, 50, NULL);
+				//将所有定位数据置零
+				OnInitLocateData();
+			}
+			
 		}
+
 		if(locate_times_error >= 3)
 		{
 			vs_x = -1;
@@ -2207,17 +2226,31 @@ void CvisionDlg::OnAllRightLocate()
 		{
 			ANGLE = -atan((ROW_RIGHT_8 - ROW_LEFT_8) / (COL_RIGHT_8 - COL_LEFT_8));
 			//OnShowList();
-			//将定位数据传给数据库
-			vs_x = ROW_LEFT_8;
-			vs_y = COL_LEFT_8;
-			vs_theta = ANGLE;
-			//将定位数据传给PLC
-			Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X*10);
-			Result[1] = (int)(COL_LEFT_8 * 10 - BIAO_Y*10);
-			Result[2] = (int)(ANGLE * 100000);
-			SetTimer(2, 50, NULL);
-			//将所有定位数据置零
-			OnInitLocateData();
+
+			//计算左右角点的距离，方便和CAD给出的数据进行比较
+			Distance = sqrt((ROW_RIGHT_8 - ROW_LEFT_8) * (ROW_RIGHT_8 - ROW_LEFT_8) + (COL_RIGHT_8 - COL_LEFT_8)*(COL_RIGHT_8 - COL_LEFT_8));
+			//左右角点的距离和CAD给出的数据进行比较，小于3毫米视为正常
+			if (fabs(Distance - CADdata) > 3.00)
+			{
+				locate_times_error++;
+				flag_right_locate_error = true;
+			}
+
+			if (fabs(Distance - CADdata) <= 3.00)
+			{
+				//将定位数据传给数据库
+				vs_x = ROW_LEFT_8;
+				vs_y = COL_LEFT_8;
+				vs_theta = ANGLE;
+				//将定位数据传给PLC
+				Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X * 10);
+				Result[1] = (int)(COL_LEFT_8 * 10 - BIAO_Y * 10);
+				Result[2] = (int)(ANGLE * 10000);
+				SetTimer(2, 50, NULL);
+				//将所有定位数据置零
+				OnInitLocateData();
+			}
+
 		}
 		if (locate_times_error >= 3  )
 		{
