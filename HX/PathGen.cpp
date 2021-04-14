@@ -12,6 +12,9 @@ namespace std
 	}
 }
 
+back_plate_info PathGen::bp_info;
+
+
 bool PathGen::ReadAllFiles()
 {
 	//读取背板文件
@@ -24,9 +27,7 @@ bool PathGen::ReadAllFiles()
 		return false;
 	}
 	fread(&bp_info, sizeof(back_plate_info), 1, bp_pos_fp);
-#ifdef _DEBUG
-	cout << "width " << bp_info.width << " height " << bp_info.height << "min_width" << bp_info.min_width << "min_height" << bp_info.height << endl;
-#endif // _DEBUG
+
 	fclose(bp_pos_fp);
 	//读入横向数组
 	//初始化横向数组
@@ -141,7 +142,20 @@ bool PathGen::RefinePaths()
 //生成实际路径
 void PathGen::GenerateActualPaths(actual_path& ap)
 {
-	if (refined_hori_paths_.size() == 2)//上下路径皆存在
+	if (refined_hori_paths_.size() > 2)
+	{
+
+
+		for (int i = 0; i < 2; ++i)
+		{
+			auto hori_path = refined_hori_paths_[i];
+			copy(hori_path.cbegin(), hori_path.cend(), back_inserter(final_paths_));
+		}
+		FillVerticalGroup();
+		auto last_path = refined_hori_paths_.back();
+		copy(last_path.cbegin(), last_path.cend(), back_inserter(final_paths_));
+	}
+	else if (refined_hori_paths_.size() == 2)//上下路径皆存在
 	{
 		//定义下方路径引用
 		const vector<point4w>& bottom_line = refined_hori_paths_.front();
@@ -179,7 +193,7 @@ void PathGen::GenerateActualPaths(actual_path& ap)
 	{
 		//修改此处位置为以左上角为原点
 		const int file_rsx = bp_info.min_width;
-		const int file_rsy = bp_info.min_height + bp_info.height;
+		const int file_rsy = bp_info.min_height + bp_info.e_height;
 		//打开文件
 		FILE* fp_output = NULL;
 		fp_output = fopen(OUTPUT_FILE_NAME.c_str(), "w+");
@@ -232,8 +246,8 @@ void PathGen::GenerateActualPaths(actual_path& ap)
 		ap.rsx = bp_info.min_width;
 		ap.rsy = bp_info.min_height;
 		ap.len = ap.real_path.size();
-		ap.height = bp_info.height;
-		ap.width = bp_info.width;
+		ap.height = bp_info.e_height;
+		ap.width = bp_info.e_width;
 
 	}
 
