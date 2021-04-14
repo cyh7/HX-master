@@ -33,10 +33,12 @@ struct point4w
 struct back_plate_info
 {
 	/* data */
-	int min_width;
-	int min_height;
-	int height;
-	int width;
+	double min_width;
+	double min_height;
+	double e_width;
+	double e_height;
+	double i_width;
+	double i_height;
 };
 struct actual_path
 {
@@ -84,7 +86,7 @@ private:
 	//排序好的路径数组
 	std::vector<point4w> final_paths_;
 
-
+public:
 	//背板信息
-	back_plate_info bp_info;
+	static back_plate_info bp_info;
 };

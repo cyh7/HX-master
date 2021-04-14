@@ -40,7 +40,6 @@ IMPLEMENT_DYNAMIC(CcadDlg, CDialogEx)
 CcadDlg::CcadDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_CAD, pParent)
 {
-
 }
 
 CcadDlg::~CcadDlg()
@@ -589,7 +588,7 @@ void CcadDlg::OnBnClickedButtonCadOpen()
 		m_CadGlueList.SetItemText(j, 1, strDecimals[a]);
 		m_CadGlueList.SetItemText(j, 2, strDecimals[a + 1]);
 
-		
+
 		if (strDecimals[a + 2] == _T("0.1"))
 		{
 			strDecimals[a + 2] = _T("喷胶");
