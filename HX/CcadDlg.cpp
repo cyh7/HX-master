@@ -39,6 +39,7 @@ IMPLEMENT_DYNAMIC(CcadDlg, CDialogEx)
 
 CcadDlg::CcadDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_CAD, pParent)
+	, m_cad_check_outer_frame(FALSE)
 {
 }
 
@@ -59,6 +60,7 @@ void CcadDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_CAD_BTN_OPMOD, m_cad_btn_opmod);
 	DDX_Control(pDX, IDC_CAD_BTN_OPCAD, m_cad_btn_opcad);
 	DDX_Control(pDX, IDC_CAD_PIC_LOGO, m_cad_pic_logo);
+	DDX_Check(pDX, IDC_CAD_check_outerframe, m_cad_check_outer_frame);
 }
 
 
@@ -78,6 +80,7 @@ BEGIN_MESSAGE_MAP(CcadDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_CAD_BTN_OPDATA, &CcadDlg::OnBnClickedCadBtnOpdata)
 	ON_WM_HELPINFO()
 	ON_BN_CLICKED(IDC_CAD_BTN_OPMON, &CcadDlg::OnBnClickedCadBtnOpmon)
+	ON_BN_CLICKED(IDC_CAD_check_outerframe, &CcadDlg::OnBnClickedCadcheckouterframe)
 END_MESSAGE_MAP()
 
 
@@ -217,7 +220,8 @@ BOOL CcadDlg::OnInitDialog()
 	GetDlgItem(IDC_STATIC_CAD_DRAW)->SetFont(&f_cad_font, false);
 	GetDlgItem(IDC_STATIC_CAD_CHOOSE)->SetFont(&f_cad_font, false);
 	GetDlgItem(IDC_STATIC_CAD_LOC)->SetFont(&f_cad_font, false);
-
+	GetDlgItem(IDC_STATIC_CAD_LOC)->SetFont(&f_cad_font, false); 
+	GetDlgItem(IDC_CAD_check_outerframe)->SetFont(&f_cad_font, false);
 	f_cad_name.CreateFontW(50,      // nHeight，文字大小
 		0,          // nWidth
 		0,          // nEscapement
@@ -990,4 +994,22 @@ bool CcadDlg::DrawLineAnimated()
 	}
 	return true;
 
+}
+
+
+void CcadDlg::OnBnClickedCadcheckouterframe()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	CButton* pBtn = (CButton*)GetDlgItem(IDC_CAD_check_outerframe);
+	int state = pBtn->GetCheck();
+	if (state == 1) // 选中
+	{
+		m_cad_check_outer_frame = 1;
+		CADdata = PathGen::bp_info.e_width;
+	}
+	else // 取消选中
+	{
+		m_cad_check_outer_frame = 0;
+		CADdata = PathGen::bp_info.i_width;
+	}
 }

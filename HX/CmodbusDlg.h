@@ -142,7 +142,7 @@ public:
 public:
 	//批次控件变量
 	CString m_mod_type;
-	// x下限
+	// x下限	// x下限
 	double m_mod_edit_xfloor;
 	// y下限
 	double m_mod_edit_yfloor;
@@ -170,4 +170,6 @@ public:
 	int m_mod_edit_right_rect_topleft_y;
 	int m_mod_edit_left_baoguang;
 	int m_mod_edit_right_baoguang;
+	CMyButton m_mod_btn_exit;
+	afx_msg void OnBnClickedModBtnExit();
 };

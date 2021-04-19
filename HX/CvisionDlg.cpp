@@ -6,10 +6,10 @@
 #include "HXDlg.h"
 #include "layoutinitVision.h"
 #include <cstdio>
-
+#include "PathGen.h"
 #include <iostream>
 #include "shlwapi.h"
-
+#include "CcadDlg.h"
 #include "opencv_include.h"
 #include "HalconCpp.h"
 using namespace HalconCpp;
@@ -93,6 +93,7 @@ double COL_LEFT_8;
 double ROW_RIGHT_8;
 double COL_RIGHT_8;
 double ANGLE;
+double CADdata;
 
 //定义左右角点的距离
 double Distance;
@@ -379,6 +380,9 @@ CString LastTime;
 double vs_x;
 double vs_y;
 double vs_theta;
+double vs_x_right;
+double vs_y_right;
+double vs_theta_right;
 CvisionDlg * CvisionDlg::pVisiondlg = NULL;
 
 UINT ThreadLeftLocation(LPVOID param)
@@ -740,6 +744,7 @@ BOOL CvisionDlg::OnInitDialog()
 	fss["tvec"] >> t_right;
 	fss.release();
 
+
 	//堆上分配CClient 由智能指针管理
 	dc_left_8_ptr = shared_ptr<CClientDC>(new CClientDC(GetDlgItem(IDC_VS_8_LEFT_PIC)));
 	dc_right_8_ptr = shared_ptr<CClientDC>(new CClientDC(GetDlgItem(IDC_VS_8_RIGHT_PIC)));
@@ -989,6 +994,8 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 			//
 			m_vs_edit_x = vs_x;
 			m_vs_edit_y = vs_y;
+			if (fabs(vs_theta) < 0.00001)
+				vs_theta = 0;
 			m_vs_edit_theta = vs_theta;
 			UpdateData(FALSE);
 
@@ -1513,6 +1520,8 @@ void CvisionDlg::OnBnClickedVsBtnResend()
 {
 	// TODO: 在此添加控件通知处理程序代码
 	//SetTimer(2, 50, NULL);
+	
+	//CADdata = (PathGen::bp_info.i_width)/10.0;
 	ArriveFlag = true;
 }
 
@@ -1599,7 +1608,7 @@ void CvisionDlg::OnShowLeftPic()
 		dc_left_8_ptr->LineTo((int)(hv_COL_left_8.D() / scale), (int)(hv_ROW_left_8.D() / scale));
 
 	}
-	
+	//remove("D://HX-master/HX-master/HX/left.bmp");
 }
 
 
@@ -1653,7 +1662,7 @@ void CvisionDlg::OnShowRightPic()
 		dc_right_8_ptr->MoveTo(m_height_right_8);
 		dc_right_8_ptr->LineTo((int)(hv_COL_right_8.D() / scale), (int)(hv_ROW_right_8.D() / scale));
 	}
-	
+	//remove("D:/HX-master/HX-master/HX/right.bmp");
 }
 
 void CvisionDlg::OnLeftCollectAndCompress()
@@ -1664,7 +1673,7 @@ void CvisionDlg::OnLeftCollectAndCompress()
 	try
 	{
 		leftCam->m_frame_ready_;
-		Sleep(200);
+		Sleep(250);
 		ReadImage(&ho_image_left_8, "D:/HX-master/HX-master/HX/view1.bmp");
 
 	}
@@ -1682,7 +1691,7 @@ void CvisionDlg::OnLeftCollectAndCompress()
 	img_left = imread("D://HX-master/HX-master/HX/view1.bmp", 0);
 	resize(img_left, img_left, Size(0, 0), 1.0 / ((double)scale), 1.0 / ((double)scale));
 	imwrite("D://HX-master/HX-master/HX/left.bmp", img_left);
-	remove("D://HX-master/HX-master/HX/view1.bmp");
+	//remove("D://HX-master/HX-master/HX/view1.bmp");
 	m_endPos_left_8_x = m_startPos_left_8_x + rect_height;
 	m_endPos_left_8_y = m_startPos_left_8_y + rect_width;
 	//添加裁剪框数据
@@ -1702,7 +1711,7 @@ void CvisionDlg::OnRightCollectAndCompress()
 	try
 	{
 		rightCam->m_frame_ready_;
-		Sleep(100);
+		Sleep(150);
 		ReadImage(&ho_image_right_8, "D:/HX-master/HX-master/HX/view2.bmp");
 		
 	}
@@ -1722,7 +1731,7 @@ void CvisionDlg::OnRightCollectAndCompress()
 	resize(img_right, img_right,Size(0,0), 1.0/ ((double)scale), 1.0/ ((double)scale));
 	imwrite("D://HX-master/HX-master/HX/right.bmp", img_right);
 
-	remove("D://HX-master/HX-master/HX/view2.bmp");
+	//remove("D://HX-master/HX-master/HX/view2.bmp");
 	//添加裁剪框数据
 	m_endPos_right_8_x = m_startPos_right_8_x + rect_height;
 	m_endPos_right_8_y = m_startPos_right_8_y + rect_width;
@@ -2089,7 +2098,7 @@ void CvisionDlg::OnAllLeftLocate()
 
 	if (flag_locate_left_over == 1 && flag_locate_right_over == 1)
 	{
-
+		
 		double_thread_time = GetTickCount64();
 		t211 = GetTickCount64();
 		t211 = t211 - t111;
@@ -2115,20 +2124,27 @@ void CvisionDlg::OnAllLeftLocate()
 
 			ANGLE = -atan((ROW_RIGHT_8 - ROW_LEFT_8) / (COL_RIGHT_8 - COL_LEFT_8));
 			//OnShowList();
-
+			//根据CAD界面的check选择框确定计算数据是和内框长度比较还是和外框长度比较
+			CcadDlg* pcaddlg = CcadDlg::pCaddlg;
+			if(pcaddlg->m_cad_check_outer_frame)
+				CADdata = PathGen::bp_info.e_width;
+			else
+				CADdata = PathGen::bp_info.i_width;
 			//计算左右角点的距离，方便和CAD给出的数据进行比较
 			Distance = sqrt((ROW_RIGHT_8 - ROW_LEFT_8) * (ROW_RIGHT_8 - ROW_LEFT_8) + (COL_RIGHT_8 - COL_LEFT_8)*(COL_RIGHT_8 - COL_LEFT_8));
-			if (fabs(Distance - CADdata) > 3.00)
+			if (fabs(Distance - CADdata / 10.0) > 3.00)
 			{
 				locate_times_error++;
 				flag_right_locate_error = true;
 			}
 
-			if (fabs(Distance - CADdata) <= 3.00)
+			if (fabs(Distance - CADdata / 10.0) <= 3.00)
 			{
 				//将定位数据传给数据库
 				vs_x = ROW_LEFT_8;
 				vs_y = COL_LEFT_8;
+				vs_x_right = ROW_RIGHT_8;
+				vs_y_right = COL_RIGHT_8;
 				vs_theta = ANGLE;
 				//将定位数据传给PLC
 				Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X*10);
@@ -2146,12 +2162,16 @@ void CvisionDlg::OnAllLeftLocate()
 			vs_x = -1;
 			vs_y = -1;
 			vs_theta = -1;
+			vs_x_right = -1;
+			vs_y_right = -1;
 			//将定位数据传给PLC
 			Result[0] = -1;
 			Result[1] = -1;
 			Result[2] = -1;
 			
 			//发送完错误信号 开启查询定时器 等待PLC按下重新识别按钮
+			SendDone = true;
+			insertdata = 0;
 			Sleep(100);
 			SendData(1, 73, 21061);
 			Sleep(50);
@@ -2164,7 +2184,10 @@ void CvisionDlg::OnAllLeftLocate()
 		}
 		//在错误次数==1或==2时并且继续出错时，将到位标志置1，再次执行定位
 		if ((locate_times_error == 1 && (flag_right_locate_error || flag_left_locate_error)) || (locate_times_error == 2 && (flag_right_locate_error || flag_left_locate_error)))
+		{
+			Sleep(500);
 			ArriveFlag = true;
+		}
 	}
 
 }
@@ -2211,6 +2234,7 @@ void CvisionDlg::OnAllRightLocate()
 	right_loacate_over_time = GetTickCount();
 	if (flag_locate_left_over == 1 && flag_locate_right_over == 1)
 	{
+		
 		double_thread_time = GetTickCount64();
 		t211 = GetTickCount64();
 		t211 = t211 - t111;
@@ -2227,20 +2251,28 @@ void CvisionDlg::OnAllRightLocate()
 			ANGLE = -atan((ROW_RIGHT_8 - ROW_LEFT_8) / (COL_RIGHT_8 - COL_LEFT_8));
 			//OnShowList();
 
+			//根据CAD界面的check选择框确定计算数据是和内框长度比较还是和外框长度比较
+			CcadDlg* pcaddlg = CcadDlg::pCaddlg;
+			if (pcaddlg->m_cad_check_outer_frame)
+				CADdata = PathGen::bp_info.e_width;
+			else
+				CADdata = PathGen::bp_info.i_width;
 			//计算左右角点的距离，方便和CAD给出的数据进行比较
 			Distance = sqrt((ROW_RIGHT_8 - ROW_LEFT_8) * (ROW_RIGHT_8 - ROW_LEFT_8) + (COL_RIGHT_8 - COL_LEFT_8)*(COL_RIGHT_8 - COL_LEFT_8));
 			//左右角点的距离和CAD给出的数据进行比较，小于3毫米视为正常
-			if (fabs(Distance - CADdata) > 3.00)
+			if (fabs(Distance - CADdata / 10.0) > 3.00)
 			{
 				locate_times_error++;
 				flag_right_locate_error = true;
 			}
 
-			if (fabs(Distance - CADdata) <= 3.00)
+			if (fabs(Distance - CADdata / 10.0) <= 3.00)
 			{
 				//将定位数据传给数据库
 				vs_x = ROW_LEFT_8;
 				vs_y = COL_LEFT_8;
+				vs_x_right = ROW_RIGHT_8;
+				vs_y_right = COL_RIGHT_8;
 				vs_theta = ANGLE;
 				//将定位数据传给PLC
 				Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X * 10);
@@ -2257,12 +2289,16 @@ void CvisionDlg::OnAllRightLocate()
 			vs_x = -1;
 			vs_y = -1;
 			vs_theta = -1;
+			vs_x_right = -1;
+			vs_y_right = -1;
 			//将定位数据传给PLC
 			Result[0] = -1;
 			Result[1] = -1;
 			Result[2] = -1;
 
 			//发送完错误信号 开启查询定时器 等待PLC按下重新识别按钮
+			SendDone = true;
+			insertdata = 0;
 			Sleep(100);
 			SendData(1, 73, 21061);
 			Sleep(50);
@@ -2275,7 +2311,10 @@ void CvisionDlg::OnAllRightLocate()
 		}
 		//if (((locate_times_error == 1 && (flag_right_locate_error || flag_left_locate_error))|| locate_times_error == 2)
 		if((locate_times_error == 1&&(flag_right_locate_error|| flag_left_locate_error))|| (locate_times_error == 2 && (flag_right_locate_error || flag_left_locate_error)))
+		{
+			Sleep(500);
 			ArriveFlag = true;
+		}
 	}
 	
 }

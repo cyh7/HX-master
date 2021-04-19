@@ -163,6 +163,7 @@ void CmodbusDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_THETAFLOOR7, m_mod_edit_right_rect_topleft_y);
 	DDX_Text(pDX, IDC_EDIT_THETAFLOOR8, m_mod_edit_left_baoguang);
 	DDX_Text(pDX, IDC_EDIT_THETAFLOOR9, m_mod_edit_right_baoguang);
+	DDX_Control(pDX, IDC_MOD_BTN_EXIT, m_mod_btn_exit);
 }
 
 
@@ -184,6 +185,7 @@ BEGIN_MESSAGE_MAP(CmodbusDlg, CDialogEx)
 	ON_WM_HELPINFO()
 	ON_BN_CLICKED(IDC_MOD_BTN_OPMON, &CmodbusDlg::OnBnClickedModBtnOpmon)
 	
+	ON_BN_CLICKED(IDC_MOD_BTN_EXIT, &CmodbusDlg::OnBnClickedModBtnExit)
 END_MESSAGE_MAP()
 
 
@@ -387,6 +389,16 @@ BOOL CmodbusDlg::OnInitDialog()
 		m_mod_btn_timesend.setWordColor(RGB(255, 250, 250));
 		//设置字体大小
 		m_mod_btn_timesend.setWordSize(200);
+
+		GetDlgItem(IDC_MOD_BTN_EXIT)->ModifyStyle(0, BS_OWNERDRAW, 0);
+		//设置Button Down的背景色，SetDownColor()和SetUpnColor()是CMyButton类中的析构函数
+		m_mod_btn_exit.SetDownColor(RGB(102, 139, 139));
+		//设置Button Up的背景色
+		m_mod_btn_exit.SetUpColor(RGB(2, 158, 160));
+		//设置字体颜色
+		m_mod_btn_exit.setWordColor(RGB(255, 250, 250));
+		//设置字体大小
+		m_mod_btn_exit.setWordSize(200);
 	}
 
 	//静态文本字体改变
@@ -1048,7 +1060,7 @@ void CmodbusDlg::OnReceive()
 			CString testLastTime = curTime.Format("%Y-%m-%d %H:%M:%S");
 			JudgeStatus();
 			CdataDlg* pdatadlg = CdataDlg::pDatadlg;
-			pdatadlg->InsertDB(testLastTime, backboard, SprayBatch, vs_x, vs_y, vs_theta, data_good, data_plc, data_spray, data_stop);
+			pdatadlg->InsertDB(testLastTime, backboard, SprayBatch, vs_x, vs_y,vs_x_right,vs_y_right, vs_theta, data_good, data_plc, data_spray, data_stop);
 			insertdata = 1;
 		}
 		CString RecStr;
@@ -1337,13 +1349,13 @@ BOOL CmodbusDlg::OnHelpInfo(HELPINFO* pHelpInfo)
 void CmodbusDlg::JudgeStatus()
 {
 	// TODO: 在此处添加实现代码.
-	if ((vs_x >= x_floor && vs_x <= x_ceil) && (vs_y >= y_floor && vs_y <= y_ceil) && (vs_theta >= theta_floor && vs_theta <= theta_ceil))
+	if ((!flag_left_locate_error) && (!flag_right_locate_error))
 	{
-		data_good = _T("良品");
+		data_good = _T("成功");
 	}
 	else
 	{
-		data_good = _T("非良品");
+		data_good = _T("失败");
 	}
 	if (SprayFlag == false)
 		data_spray = _T("正常");
@@ -1381,3 +1393,14 @@ void CmodbusDlg::BitManipul(int temp)
 
 
 
+
+
+void CmodbusDlg::OnBnClickedModBtnExit()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	exitFlag = true;
+	Sleep(1500);
+	OnClose();
+	Sleep(200);
+	AfxGetMainWnd()->SendMessage(WM_CLOSE);
+}

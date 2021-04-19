@@ -590,6 +590,9 @@ void CHXDlg::OnBnClickedHxBtnModbus()
 		title = _T("喷胶主监控");
 		this->SetWindowText(title);
 		MessageBox(_T("请登录管理员账户"));
+		Sleep(100);
+		CLoginDlg loginDlg;
+		loginDlg.DoModal();
 	}
 	else
 	{
@@ -659,6 +662,9 @@ void CHXDlg::ShowModbus()
 		title = _T("喷胶主监控");
 		this->SetWindowText(title);
 		MessageBox(_T("请登录管理员账户"));
+		Sleep(100);
+		CLoginDlg loginDlg;
+		loginDlg.DoModal();
 	}
 	else
 	{

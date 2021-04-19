@@ -49,6 +49,7 @@ void InitLayoutModbus(CLayout& layout, CWnd* parent)
 	layout.RegisterControl(IDC_MOD_BTN_OPCAD, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_MOD_BTN_OPDATA, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_MOD_BTN_OPMOD, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_MOD_BTN_EXIT, CLayout::e_stretch_all);
 	//…Ë÷√«¯
 	layout.RegisterControl(IDC_MOD_BTN_CHANGE, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_STATIC13, CLayout::e_stretch_all);
