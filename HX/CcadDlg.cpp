@@ -473,15 +473,36 @@ void CcadDlg::OnBnClickedButtonCadOpen()
 {
 	// TODO: 在此添加控件通知处理程序代码
 	CString filename;
+	CString model_type;
+	CString modified_time;
 	CFileDialog fileDlg(true, _T("dwg"), _T("*.dwg"), OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, _T(" dwg files (*.dwg)|*.dwg|All Files (*.*)|*.*||"), NULL);
+
 	if (fileDlg.DoModal() == IDOK)    //弹出对话框  
 	{
 		filename = fileDlg.GetPathName();//得到完整的文件名和目录名拓展名  
+		int pos0 = 0;
+
+		int string_size = filename.GetLength();
+		for (int i = string_size - 1; i >= 0; --i)
+		{
+			if (filename[i] == '\\')
+			{
+				pos0 = i + 1 >= string_size ? 0 : i + 1;
+				break;
+			}
+		}
+
+		int pos1 = filename.FindOneOf(L"(");
+		int pos2 = filename.FindOneOf(L")");
+		//JHD550N4U51-K1(2021.01.01).dwg
+		model_type = filename.Mid(pos0, pos1 - pos0);
+		modified_time = filename.Mid(pos1 + 1, pos2 - pos1 - 1);
+		AfxMessageBox(model_type);
+		AfxMessageBox(modified_time);
 		GetDlgItem(IDC_EDIT_CAD_PATH)->SetWindowText(filename);//将路径显示  
+
 		//CString filename = fileDlg.GetFileName();
 	}
-	else
-		return;
 
 	SHELLEXECUTEINFO ShExecInfo = { 0 };
 	ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
