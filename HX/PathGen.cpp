@@ -145,38 +145,39 @@ void PathGen::GenerateActualPaths(actual_path& ap)
 	if (refined_hori_paths_.size() > 2)
 	{
 
+		const vector<point4w>& bottom_line = refined_hori_paths_.front();
+		const vector<point4w>& top_line = refined_hori_paths_.back();
 
-		for (int i = 0; i < 2; ++i)
-		{
-			auto hori_path = refined_hori_paths_[i];
-			copy(hori_path.cbegin(), hori_path.cend(), back_inserter(final_paths_));
-		}
+		copy(top_line.cbegin(), top_line.cend(), back_inserter(final_paths_));
 		FillVerticalGroup();
-		auto last_path = refined_hori_paths_.back();
+		copy(bottom_line.cbegin(), bottom_line.cend(), back_inserter(final_paths_));
+
+		auto last_path = refined_hori_paths_[1];
+		ReversePathGroup(last_path);
 		copy(last_path.cbegin(), last_path.cend(), back_inserter(final_paths_));
+
 	}
 	else if (refined_hori_paths_.size() == 2)//上下路径皆存在
 	{
 		//定义下方路径引用
 		const vector<point4w>& bottom_line = refined_hori_paths_.front();
-		copy(bottom_line.cbegin(), bottom_line.cend(), back_inserter(final_paths_));
-		FillVerticalGroup();
 		const vector<point4w>& top_line = refined_hori_paths_.back();
 		copy(top_line.cbegin(), top_line.cend(), back_inserter(final_paths_));
+		FillVerticalGroup();
+		copy(bottom_line.cbegin(), bottom_line.cend(), back_inserter(final_paths_));
 	}
 	else if (refined_hori_paths_.size() == 1)
 	{
 		vector<point4w>& single_line = refined_hori_paths_.front();
 		if (single_line.front().ey < vert_paths_.front().ey) //说明是底线
 		{
-			copy(single_line.cbegin(), single_line.cend(), back_inserter(final_paths_));
 			FillVerticalGroup();
+			copy(single_line.cbegin(), single_line.cend(), back_inserter(final_paths_));
 		}
 		else//说明是顶线
 		{
-			FillVerticalGroup();
-			ReversePathGroup(single_line);
 			copy(single_line.cbegin(), single_line.cend(), back_inserter(final_paths_));
+			FillVerticalGroup();
 		}
 	}
 	else if (refined_hori_paths_.empty())//无横线
@@ -275,7 +276,7 @@ void PathGen::FillVerticalGroup()
 	}
 	for (int i = 0; i < refined_vert_paths_.size(); ++i)
 	{
-		if (i % 2 == 0)
+		if (i % 2)
 		{
 			//不需要反向
 			copy(refined_vert_paths_[i].cbegin(), refined_vert_paths_[i].cend(), back_inserter(final_paths_));
