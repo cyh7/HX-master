@@ -135,7 +135,7 @@ void CInfoFile::WirteDocline(double &x_floor, double &x_ceil, double &y_floor, d
 	::wsprintfA(temp, "%ls", (LPCTSTR)type);
 	query = temp;*/
 	
-	csdioFile.WriteString(_T(" "));
+	
 	csdioFile.WriteString(DoubleToCString(x_floor));
 	csdioFile.WriteString(_T(" "));
 	csdioFile.WriteString(DoubleToCString(x_ceil));
