@@ -1284,7 +1284,7 @@ void CmodbusDlg::OnBnClickedModBtnChange()
 	CInfoFile file;
 
 	//backboard = m_mod_type;
-	SprayBatch = 0;
+	//SprayBatch = 0;
 	x_floor = m_mod_edit_xfloor;
 	x_ceil = m_mod_edit_xceil;
 	y_floor = m_mod_edit_yfloor;

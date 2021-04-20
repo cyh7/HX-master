@@ -500,9 +500,11 @@ void CcadDlg::OnBnClickedButtonCadOpen()
 		int pos2 = filename.FindOneOf(L")");
 		//JHD550N4U51-K1(2021.01.01).dwg
 		model_type = filename.Mid(pos0, pos1 - pos0);
+		backboard = model_type;
+		SprayBatch = 0;
 		modified_time = filename.Mid(pos1 + 1, pos2 - pos1 - 1);
-		AfxMessageBox(model_type);
-		AfxMessageBox(modified_time);
+		//AfxMessageBox(model_type);
+		//AfxMessageBox(modified_time);
 		GetDlgItem(IDC_EDIT_CAD_PATH)->SetWindowText(filename);//将路径显示  
 
 		//CString filename = fileDlg.GetFileName();
