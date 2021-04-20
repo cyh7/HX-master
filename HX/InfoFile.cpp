@@ -41,7 +41,7 @@ void CInfoFile::WritePwd(char* name, char* pwd)
 }
 
 //读取商品信息
-void CInfoFile::ReadDocline(CString &type,double &x_floor, double &x_ceil, double &y_floor, double &y_ceil, double &theta_floor, double &theta_ceil, int& hv_Threshold_8,
+void CInfoFile::ReadDocline(double &x_floor, double &x_ceil, double &y_floor, double &y_ceil, double &theta_floor, double &theta_ceil, int& hv_Threshold_8,
 	int& hv_Filter_block_radius_8, int& rect_height, int& rect_width, int& m_startPos_left_8_x,
 	int& m_startPos_left_8_y, int& m_startPos_right_8_x, int& m_startPos_right_8_y, int &left_baoguang_time, int &right_baoguang_time)
 {
@@ -79,25 +79,25 @@ void CInfoFile::ReadDocline(CString &type,double &x_floor, double &x_ceil, doubl
 		strTmp.push_back(str);
 		str = vecResult[0].Tokenize(_T(" "), curPos);
 	}
-	type = strTmp[0];
-	x_floor = _wtof(strTmp[1]);
-	x_ceil = _wtof(strTmp[2]);
-	y_floor = _wtof(strTmp[3]);
-	y_ceil = _wtof(strTmp[4]);
-	theta_floor = _wtof(strTmp[5]);
-	theta_ceil = _wtof(strTmp[6]);
+	//type = strTmp[0];
+	x_floor = _wtof(strTmp[0]);
+	x_ceil = _wtof(strTmp[1]);
+	y_floor = _wtof(strTmp[2]);
+	y_ceil = _wtof(strTmp[3]);
+	theta_floor = _wtof(strTmp[4]);
+	theta_ceil = _wtof(strTmp[5]);
 
-	hv_Threshold_8 = _wtof(strTmp[7]);
-	hv_Filter_block_radius_8 = _wtof(strTmp[8]);
-	rect_height = _wtof(strTmp[9]);
-	rect_width = _wtof(strTmp[10]);
-	m_startPos_left_8_x = _wtof(strTmp[11]);
-	m_startPos_left_8_y = _wtof(strTmp[12]);
-	m_startPos_right_8_x = _wtof(strTmp[13]);
-	m_startPos_right_8_y = _wtof(strTmp[14]);
+	hv_Threshold_8 = _wtof(strTmp[6]);
+	hv_Filter_block_radius_8 = _wtof(strTmp[7]);
+	rect_height = _wtof(strTmp[8]);
+	rect_width = _wtof(strTmp[9]);
+	m_startPos_left_8_x = _wtof(strTmp[10]);
+	m_startPos_left_8_y = _wtof(strTmp[11]);
+	m_startPos_right_8_x = _wtof(strTmp[12]);
+	m_startPos_right_8_y = _wtof(strTmp[13]);
 
-	left_baoguang_time = _wtof(strTmp[15]);
-	right_baoguang_time = _wtof(strTmp[16]);
+	left_baoguang_time = _wtof(strTmp[14]);
+	right_baoguang_time = _wtof(strTmp[15]);
 
 	/*tmp.frame_length = _wtof(strTmp[7]);
 	tmp.frame_width = _wtof(strTmp[8]);
@@ -106,7 +106,7 @@ void CInfoFile::ReadDocline(CString &type,double &x_floor, double &x_ceil, doubl
 }
 
 //写入文件
-void CInfoFile::WirteDocline(CString &type, double &x_floor, double &x_ceil, double &y_floor, double &y_ceil, double &theta_floor, double &theta_ceil,int &hv_Threshold_8,
+void CInfoFile::WirteDocline(double &x_floor, double &x_ceil, double &y_floor, double &y_ceil, double &theta_floor, double &theta_ceil,int &hv_Threshold_8,
 	int &hv_Filter_block_radius_8,int &rect_height,int &rect_width, int &m_startPos_left_8_x,
 	int &m_startPos_left_8_y, int &m_startPos_right_8_x, int &m_startPos_right_8_y, int &left_baoguang_time, int &right_baoguang_time)
 {
@@ -119,12 +119,12 @@ void CInfoFile::WirteDocline(CString &type, double &x_floor, double &x_ceil, dou
 	CStdioFile csdioFile;
 	BOOL flag = csdioFile.Open(_T(".\\stock.txt"), CFile::modeCreate |CFile::modeReadWrite);
 	//写入简体中文数据
-	if (type.IsEmpty())
+	/*if (type.IsEmpty())
 	{
 		csdioFile.WriteString(_T("无"));
 	}
 	else
-		csdioFile.WriteString(type);
+		csdioFile.WriteString(type);*/
 	
 	//恢复区域设定
 	setlocale(LC_CTYPE, old_locale);

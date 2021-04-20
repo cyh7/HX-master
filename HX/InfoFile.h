@@ -43,12 +43,12 @@ public:
 	void WritePwd(char* name, char* pwd);
 
 	// 读取商品数据
-	void ReadDocline(CString &type, double &x_floor, double &x_ceil, double &y_floor, double &y_ceil, double &theta_floor, double &theta_ceil, int& hv_Threshold_8,
+	void ReadDocline(double &x_floor, double &x_ceil, double &y_floor, double &y_ceil, double &theta_floor, double &theta_ceil, int& hv_Threshold_8,
 		int& hv_Filter_block_radius_8, int& rect_height, int& rect_width, int& m_startPos_left_8_x,
 		int& m_startPos_left_8_y, int& m_startPos_right_8_x, int& m_startPos_right_8_y ,int &left_baoguang_time, int &right_baoguang_time);
 
 	//商品写入文件
-	void WirteDocline(CString& type, double& x_floor, double& x_ceil, double& y_floor, double& y_ceil, double& theta_floor, double& theta_ceil, int& hv_Threshold_8,
+	void WirteDocline(double& x_floor, double& x_ceil, double& y_floor, double& y_ceil, double& theta_floor, double& theta_ceil, int& hv_Threshold_8,
 		int& hv_Filter_block_radius_8, int& rect_height, int& rect_width, int& m_startPos_left_8_x,
 		int& m_startPos_left_8_y, int& m_startPos_right_8_x, int& m_startPos_right_8_y, int &left_baoguang_time, int &right_baoguang_time);
 	//添加新商品

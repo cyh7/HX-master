@@ -141,7 +141,7 @@ public:
 //控件变量
 public:
 	//批次控件变量
-	CString m_mod_type;
+	//CString m_mod_type;
 	// x下限	// x下限
 	double m_mod_edit_xfloor;
 	// y下限

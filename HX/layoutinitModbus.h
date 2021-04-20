@@ -53,7 +53,7 @@ void InitLayoutModbus(CLayout& layout, CWnd* parent)
 	//…Ë÷√«¯
 	layout.RegisterControl(IDC_MOD_BTN_CHANGE, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_STATIC13, CLayout::e_stretch_all);
-	layout.RegisterControl(IDC_STATIC14, CLayout::e_stretch_all);
+	//layout.RegisterControl(IDC_STATIC14, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_STATIC15, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_STATIC16, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_STATIC17, CLayout::e_stretch_all);
@@ -72,7 +72,7 @@ void InitLayoutModbus(CLayout& layout, CWnd* parent)
 	layout.RegisterControl(IDC_STATIC29, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_STATIC30, CLayout::e_stretch_all);
 
-	layout.RegisterControl(IDC_EDIT_TYPE, CLayout::e_stretch_all);
+	//layout.RegisterControl(IDC_EDIT_TYPE, CLayout::e_stretch_all);
 
 	layout.RegisterControl(IDC_EDIT_XFLOOR, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_EDIT_YFLOOR, CLayout::e_stretch_all);
