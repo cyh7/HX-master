@@ -320,6 +320,9 @@ int test_times=0;
 int wrong_times=0;
 
 
+int i1, i2;
+double left_x1, left_y1, right_x1, right_y1;
+double left_x2, left_y2, right_x2, right_y2;
 
 //定义右相机检测的水平直线最小长度
 int hv_min_length_width_line_right_8 = 200;
@@ -1179,7 +1182,17 @@ void coordinate_transformation_left()
 	left_robot_coordinate = r_left.inv() * (cam_matrix_left.inv() * s_left * left_pixel_coordinate - t_left);//从标定文件中读标定数据,将像素坐标转换为世界坐标
 	ROW_LEFT_8 = left_robot_coordinate.at<double>(0, 0);
 	COL_LEFT_8 = left_robot_coordinate.at<double>(1, 0);
-	flag_locate_left_over = 1;
+
+	if (i1 == 0)
+	{
+		left_x1 = ROW_LEFT_8;
+		left_y1 = COL_LEFT_8;
+	}
+	if (i1 == 1)
+	{
+		left_x2 = ROW_LEFT_8;
+		left_y2 = COL_LEFT_8;
+	}
 }
 
 void coordinate_transformation_right()
@@ -1199,6 +1212,17 @@ void coordinate_transformation_right()
 	right_robot_coordinate = r_right.inv() * (cam_matrix_right.inv() * s_right * right_pixel_coordinate - t_right);//从标定文件中读标定数据,将像素坐标转换为世界坐标
 	ROW_RIGHT_8 = right_robot_coordinate.at<double>(0, 0);
 	COL_RIGHT_8 = right_robot_coordinate.at<double>(1, 0);
+
+	if (i2 == 0)
+	{
+		right_x1 = ROW_RIGHT_8;
+		right_y1 = COL_RIGHT_8;
+	}
+	if (i2 == 1)
+	{
+		right_x2 = ROW_RIGHT_8;
+		right_y2 = COL_RIGHT_8;
+	}
 	
 }
 
@@ -1672,7 +1696,7 @@ void CvisionDlg::OnLeftCollectAndCompress()
 	string pic_name = DATA_FOLDER + string("view1.bmp");
 	try
 	{
-		leftCam->m_frame_ready_;
+		while(!leftCam->m_frame_ready_);
 		Sleep(250);
 		ReadImage(&ho_image_left_8, "D:/HX-master/HX-master/HX/view1.bmp");
 
@@ -1710,7 +1734,8 @@ void CvisionDlg::OnRightCollectAndCompress()
 	string pic_name = DATA_FOLDER + string("view2.bmp");
 	try
 	{
-		rightCam->m_frame_ready_;
+		while(!rightCam->m_frame_ready_);
+
 		Sleep(150);
 		ReadImage(&ho_image_right_8, "D:/HX-master/HX-master/HX/view2.bmp");
 		
@@ -2057,41 +2082,71 @@ void CvisionDlg::OnInitLocateData()
 }
 
 
+void zero_left_data()
+{
+	//将左图定位数据比较用的临时变量置0
+	left_x1 = 0;
+	left_x2 = 0;
+	left_y1 = 0;
+	left_y2 = 0;
+}
+
+void zero_right_data()
+{
+	//将左图定位数据比较用的临时变量置0
+	right_x1 = 0;
+	right_x2 = 0;
+	right_y1 = 0;
+	right_y2 = 0;
+}
+
+
 void CvisionDlg::OnAllLeftLocate()
 {
-	// 此函数实现左相机采图,读图,定位,显示,坐标转换的全功能
-	left_cut_pic_begin_time = GetTickCount64();
-	try
-	{
-		//发送软触发指令
-		leftCam->m_frame_ready_ = false;
-		leftCam->ObjFeatureControlPtr->GetCommandFeature("TriggerSoftware")->Execute();
-	}
-	catch (CGalaxyException& e)
-	{
-		MessageBox(CString(e.what()));
-		return;
-	}
-	catch (std::exception& e)
-	{
-		MessageBox(CString(e.what()));
-		return;
-	}
-	while (leftCam->m_frame_ready_ == false)
-	{
-		Sleep(100);
-		//等待采图完成
-	}
-	left_loacate_begin_time = GetTickCount64();
+	zero_left_data();
 
-	flag_left_locate_error = false;
-	OnLeftCollectAndCompress();
-	locateleft();
-	OnShowLeftPic();
-	if (!flag_left_locate_error)
+	for (i1 = 0; i1 < 2; i1++)
 	{
-		coordinate_transformation_left();
+		// 此函数实现左相机采图,读图,定位,显示,坐标转换的全功能
+		left_cut_pic_begin_time = GetTickCount64();
+		try
+		{
+			//发送软触发指令
+			leftCam->m_frame_ready_ = false;
+			leftCam->ObjFeatureControlPtr->GetCommandFeature("TriggerSoftware")->Execute();
+		}
+		catch (CGalaxyException& e)
+		{
+			MessageBox(CString(e.what()));
+			return;
+		}
+		catch (std::exception& e)
+		{
+			MessageBox(CString(e.what()));
+			return;
+		}
+		while (leftCam->m_frame_ready_ == false)
+		{
+			Sleep(100);
+			//等待采图完成
+		}
+		left_loacate_begin_time = GetTickCount64();
+
+		flag_left_locate_error = false;
+		OnLeftCollectAndCompress();
+		locateleft();
+		OnShowLeftPic();
+		if (!flag_left_locate_error)
+		{
+			coordinate_transformation_left();
+		}
+		if ((i1 == 1) && (left_x1!=0) && (left_x2) && ((fabs(left_x1 - left_x2) > 0.7) || (fabs(left_y1 - left_y2) > 0.7)))
+		{
+			flag_left_locate_error = true;
+			locate_times_error++;
+		}
 	}
+	
 
 	flag_locate_left_over = 1;
 	left_loacate_over_time = GetTickCount64();
@@ -2185,7 +2240,7 @@ void CvisionDlg::OnAllLeftLocate()
 		//在错误次数==1或==2时并且继续出错时，将到位标志置1，再次执行定位
 		if ((locate_times_error == 1 && (flag_right_locate_error || flag_left_locate_error)) || (locate_times_error == 2 && (flag_right_locate_error || flag_left_locate_error)))
 		{
-			Sleep(500);
+			Sleep(250);
 			ArriveFlag = true;
 		}
 	}
@@ -2194,40 +2249,51 @@ void CvisionDlg::OnAllLeftLocate()
 
 void CvisionDlg::OnAllRightLocate()
 {
+	zero_right_data();
 	// 此函数实现右相机采图,读图,定位,显示,坐标转换的全功能
-	right_cut_pic_begin_time = GetTickCount64();
-	try
+	for (i2 = 0; i2 < 2; i2++)
 	{
-		//发送软触发指令
-		rightCam->m_frame_ready_ = false;
-		rightCam->ObjFeatureControlPtr->GetCommandFeature("TriggerSoftware")->Execute();
-	}
-	catch (CGalaxyException& e)
-	{
-		MessageBox(CString(e.what()));
-		return;
-	}
-	catch (std::exception& e)
-	{
-		MessageBox(CString(e.what()));
-		return;
-	}
-	while ( rightCam->m_frame_ready_ == false)
-	{
-		//等待采图完成
-		Sleep(100);
-	}
-	right_loacate_begin_time = GetTickCount64();
+		// 此函数实现右相机采图,读图,定位,显示,坐标转换的全功能
+		right_cut_pic_begin_time = GetTickCount64();
+		try
+		{
+			//发送软触发指令
+			rightCam->m_frame_ready_ = false;
+			rightCam->ObjFeatureControlPtr->GetCommandFeature("TriggerSoftware")->Execute();
+		}
+		catch (CGalaxyException& e)
+		{
+			MessageBox(CString(e.what()));
+			return;
+		}
+		catch (std::exception& e)
+		{
+			MessageBox(CString(e.what()));
+			return;
+		}
+		while (rightCam->m_frame_ready_ == false)
+		{
+			//等待采图完成
+			Sleep(100);
+		}
+		right_loacate_begin_time = GetTickCount64();
 
-	flag_right_locate_error = false;
-	OnRightCollectAndCompress();
-	locateright();
-	
-	OnShowRightPic();
-	if (!flag_right_locate_error)
-	{
-		coordinate_transformation_right();
+		flag_right_locate_error = false;
+		OnRightCollectAndCompress();
+		locateright();
+
+		OnShowRightPic();
+		if (!flag_right_locate_error)
+		{
+			coordinate_transformation_right();
+		}
+		if ((i2 == 1) && (right_x1 != 0) && (right_x2 != 0) && ((fabs(right_x1 - right_x2) > 0.7) || (fabs(right_y1 - right_y2) > 0.7)))
+		{
+			flag_right_locate_error = true;
+			locate_times_error++;
+		}
 	}
+	
 	//flag_locate_over++标志右相机坐标转换完成
 	flag_locate_right_over = 1;
 
@@ -2312,7 +2378,7 @@ void CvisionDlg::OnAllRightLocate()
 		//if (((locate_times_error == 1 && (flag_right_locate_error || flag_left_locate_error))|| locate_times_error == 2)
 		if((locate_times_error == 1&&(flag_right_locate_error|| flag_left_locate_error))|| (locate_times_error == 2 && (flag_right_locate_error || flag_left_locate_error)))
 		{
-			Sleep(500);
+			Sleep(250);
 			ArriveFlag = true;
 		}
 	}
