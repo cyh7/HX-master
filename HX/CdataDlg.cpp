@@ -82,13 +82,15 @@ BOOL CdataDlg::OnInitDialog()
 	m_dat_list.InsertColumn(0, TEXT("日期"), 0, 210);
 	m_dat_list.InsertColumn(1, TEXT("背板型号"), 0, 120);
 	m_dat_list.InsertColumn(2, TEXT("喷涂批次"), 0, 80);
-	m_dat_list.InsertColumn(3, TEXT("X坐标"), 0, 100);
-	m_dat_list.InsertColumn(4, TEXT("Y坐标"), 0, 100);
-	m_dat_list.InsertColumn(5, TEXT("偏转角"), 0, 100);
-	m_dat_list.InsertColumn(6, TEXT("是否良品"), 0, 120);
-	m_dat_list.InsertColumn(7, TEXT("PLC状态"), 0, 120);
-	m_dat_list.InsertColumn(8, TEXT("胶机状态"), 0, 120);
-	m_dat_list.InsertColumn(9, TEXT("急停"), 0, 120);
+	m_dat_list.InsertColumn(3, TEXT("X左侧坐标"), 0, 100);
+	m_dat_list.InsertColumn(4, TEXT("Y左侧坐标"), 0, 100);
+	m_dat_list.InsertColumn(5, TEXT("X右侧坐标"), 0, 100);
+	m_dat_list.InsertColumn(6, TEXT("Y右侧坐标"), 0, 100);
+	m_dat_list.InsertColumn(7, TEXT("偏转角"), 0, 100);
+	m_dat_list.InsertColumn(8, TEXT("定位状态"), 0, 120);
+	m_dat_list.InsertColumn(9, TEXT("PLC状态"), 0, 120);
+	m_dat_list.InsertColumn(10, TEXT("胶机状态"), 0, 120);
+	m_dat_list.InsertColumn(11, TEXT("急停"), 0, 120);
 
 	
 
@@ -340,7 +342,7 @@ void CdataDlg::OnTimer(UINT_PTR nIDEvent)
 		break;
 	case 2:
 	{
-		CTime StatusTime;
+		/*CTime StatusTime;
 		StatusTime = StatusTime.GetCurrentTime();
 		CString sTime = StatusTime.Format("%Y-%m-%d %H:%M:%S");
 		CString test_Type = _T("A型");
@@ -354,7 +356,7 @@ void CdataDlg::OnTimer(UINT_PTR nIDEvent)
 		CString test_Stop = _T("无急停");
 		
 
-		InsertDB(sTime, test_Type, n, test_x_loc, test_y_loc, test_theta_loc, test_Good, test_PLc, test_Spray, test_Stop);
+		InsertDB(sTime, test_Type, n, test_x_loc, test_y_loc, test_theta_loc, test_Good, test_PLc, test_Spray, test_Stop);*/
 	}
 	}
 	CDialogEx::OnTimer(nIDEvent);
@@ -394,7 +396,7 @@ BOOL CdataDlg::SelectDB()
 	CString cquery;
 	//条件全部为空则查询所有书籍
 
-	cquery.Format(_T("select * from table1 where DATE_SUB(CURDATE(), INTERVAL 6 DAY) <= 日期"));
+	cquery.Format(_T("select * from table2 where DATE_SUB(CURDATE(), INTERVAL 6 DAY) <= 日期"));
 	//CString转const char*
 	//const char* query = CString(cquery);
 	//cstring转 const char*
@@ -450,7 +452,9 @@ void CdataDlg::GetDataFromDB()
 		m_dat_data[i].push_back(m_dat_row[7]);
 		m_dat_data[i].push_back(m_dat_row[8]);
 		m_dat_data[i].push_back(m_dat_row[9]);
-		m_dat_data[i++].push_back(m_dat_row[10]);
+		m_dat_data[i].push_back(m_dat_row[10]);
+		m_dat_data[i].push_back(m_dat_row[11]);
+		m_dat_data[i++].push_back(m_dat_row[12]);
 		//m_dat_data[i++].push_back(m_dat_row[11]);
 	}
 }
@@ -551,7 +555,7 @@ BOOL CdataDlg::SelectDateDB()
 	else
 	{
 		QueryDayFlag = true;
-		cquery.Format(_T("select * from table1 where 日期 >= CONCAT('%s',' ','%s') and 日期 <= CONCAT('%s',' ','%s')"), sYear, sTime, sYearEnd, sTimeEnd);
+		cquery.Format(_T("select * from table2 where 日期 >= CONCAT('%s',' ','%s') and 日期 <= CONCAT('%s',' ','%s')"), sYear, sTime, sYearEnd, sTimeEnd);
 		//CString转const char*
 		//const char* query = CString(cquery);
 		//cstring转 const char*
@@ -603,7 +607,7 @@ BOOL CdataDlg::DeleteDB()
 	//删除所有DELETE FROM table_name
 	//truncate table table1
 
-	cquery.Format(TEXT("delete from table1 where 日期 >= CONCAT('%s',' ','%s') and 日期 <= CONCAT('%s',' ','%s')"), sYear, sTime, sYearEnd, sTimeEnd);
+	cquery.Format(TEXT("delete from table2 where 日期 >= CONCAT('%s',' ','%s') and 日期 <= CONCAT('%s',' ','%s')"), sYear, sTime, sYearEnd, sTimeEnd);
 
 	const char* query;
 	char temp[1024];
@@ -715,7 +719,7 @@ BOOL CdataDlg::ClearDB()
 	//删除所有DELETE FROM table_name
 	//truncate table table1
 
-	cquery.Format(TEXT("truncate table table1"));
+	cquery.Format(TEXT("truncate table table2"));
 
 	const char* query;
 	char temp[100];
@@ -746,14 +750,14 @@ void CdataDlg::OnBnClickedDatBtnClear()
 }
 
 
-BOOL CdataDlg::InsertDB(CString time, CString type, DWORD batch, double x, double y, double theta, CString good, CString plc, CString spray, CString stop)
+BOOL CdataDlg::InsertDB(CString time, CString type, DWORD batch, double x, double y,double x_right,double y_right, double theta, CString good, CString plc, CString spray, CString stop)
 {
 	// TODO: 在此处添加实现代码.
 	CString cquery;
 
 	CString test;
 	test = _T("a");
-	cquery.Format(_T("insert into table1 values('%s','%s','%d',%.3f ,%.3f ,%.3f ,'%s','%s','%s','%s');"), time, type, batch, x, y, theta, good, plc, spray, stop);
+	cquery.Format(_T("insert into table2 values('%s','%s','%d',%.3f ,%.3f ,%.3f,%.3f,%.3f ,'%s','%s','%s','%s');"), time, type, batch, x, y,x_right,y_right, theta, good, plc, spray, stop);
 
 	const char* query;
 	char temp[1024];

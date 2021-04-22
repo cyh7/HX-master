@@ -95,7 +95,7 @@ CmodbusDlg::CmodbusDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_MODBUS, pParent)
 	, m_EditSend(_T(""))
 	, m_EditReceive(_T(""))
-	, m_mod_type(_T(""))
+	//, m_mod_type(_T(""))
 	, m_mod_edit_xfloor(0)
 	, m_mod_edit_yfloor(0)
 	, m_mod_edit_thetafloor(0)
@@ -142,7 +142,7 @@ void CmodbusDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_MOD_BTN_OPVS, m_mod_btn_opvs);
 	DDX_Control(pDX, IDC_MOD_BTN_OPCAD, m_mod_btn_opcad);
 	DDX_Control(pDX, IDC_MOD_BTN_OPDATA, m_mod_btn_opdata);
-	DDX_Text(pDX, IDC_EDIT_TYPE, m_mod_type);
+	//DDX_Text(pDX, IDC_EDIT_TYPE, m_mod_type);
 	DDX_Control(pDX, IDC_MOD_BTN_CHANGE, m_mod_btn_change);
 	DDX_Control(pDX, IDC_MOD_BTN_OPMOD, m_mod_btn_opmod);
 	DDX_Text(pDX, IDC_EDIT_XFLOOR, m_mod_edit_xfloor);
@@ -163,6 +163,7 @@ void CmodbusDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_THETAFLOOR7, m_mod_edit_right_rect_topleft_y);
 	DDX_Text(pDX, IDC_EDIT_THETAFLOOR8, m_mod_edit_left_baoguang);
 	DDX_Text(pDX, IDC_EDIT_THETAFLOOR9, m_mod_edit_right_baoguang);
+	DDX_Control(pDX, IDC_MOD_BTN_EXIT, m_mod_btn_exit);
 }
 
 
@@ -184,6 +185,7 @@ BEGIN_MESSAGE_MAP(CmodbusDlg, CDialogEx)
 	ON_WM_HELPINFO()
 	ON_BN_CLICKED(IDC_MOD_BTN_OPMON, &CmodbusDlg::OnBnClickedModBtnOpmon)
 	
+	ON_BN_CLICKED(IDC_MOD_BTN_EXIT, &CmodbusDlg::OnBnClickedModBtnExit)
 END_MESSAGE_MAP()
 
 
@@ -387,6 +389,16 @@ BOOL CmodbusDlg::OnInitDialog()
 		m_mod_btn_timesend.setWordColor(RGB(255, 250, 250));
 		//设置字体大小
 		m_mod_btn_timesend.setWordSize(200);
+
+		GetDlgItem(IDC_MOD_BTN_EXIT)->ModifyStyle(0, BS_OWNERDRAW, 0);
+		//设置Button Down的背景色，SetDownColor()和SetUpnColor()是CMyButton类中的析构函数
+		m_mod_btn_exit.SetDownColor(RGB(102, 139, 139));
+		//设置Button Up的背景色
+		m_mod_btn_exit.SetUpColor(RGB(2, 158, 160));
+		//设置字体颜色
+		m_mod_btn_exit.setWordColor(RGB(255, 250, 250));
+		//设置字体大小
+		m_mod_btn_exit.setWordSize(200);
 	}
 
 	//静态文本字体改变
@@ -412,7 +424,7 @@ BOOL CmodbusDlg::OnInitDialog()
 		GetDlgItem(IDC_STATIC7)->SetFont(&f_mod_font, false);
 		GetDlgItem(IDC_STATIC8)->SetFont(&f_mod_font, false);
 		GetDlgItem(IDC_STATIC9)->SetFont(&f_mod_font, false);
-		GetDlgItem(IDC_STATIC14)->SetFont(&f_mod_font, false);
+		//GetDlgItem(IDC_STATIC14)->SetFont(&f_mod_font, false);
 		GetDlgItem(IDC_STATIC15)->SetFont(&f_mod_font, false);
 		GetDlgItem(IDC_STATIC16)->SetFont(&f_mod_font, false);
 		GetDlgItem(IDC_STATIC17)->SetFont(&f_mod_font, false);
@@ -503,10 +515,10 @@ BOOL CmodbusDlg::OnInitDialog()
 	//读取设置
 	{
 		CInfoFile file;
-		file.ReadDocline(backboard, x_floor, x_ceil, y_floor, y_ceil, theta_floor, theta_ceil, hv_Threshold_8,
+		file.ReadDocline(x_floor, x_ceil, y_floor, y_ceil, theta_floor, theta_ceil, hv_Threshold_8,
 			hv_Filter_block_radius_8, rect_height, rect_width, m_startPos_left_8_x,
 			m_startPos_left_8_y, m_startPos_right_8_x, m_startPos_right_8_y, left_baoguang_time, right_baoguang_time);
-		m_mod_type = backboard;
+		//m_mod_type = backboard;
 		m_mod_edit_xfloor = x_floor;
 		m_mod_edit_xceil = x_ceil;
 		m_mod_edit_yfloor = y_floor;
@@ -557,7 +569,7 @@ HBRUSH CmodbusDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 		return (HBRUSH)m_Brush.GetSafeHandle();
 	}
 	//两个编辑框透明
-	if (pWnd->GetDlgCtrlID() == IDC_EDIT2 || IDC_EDIT1 || IDC_EDIT_TYPE)
+	if (pWnd->GetDlgCtrlID() == IDC_EDIT2 || IDC_EDIT1)
 	{
 		pDC->SetBkMode(TRANSPARENT);
 		//pDC->SetTextColor(RGB(50, 50, 200));  //字体颜色
@@ -1048,7 +1060,7 @@ void CmodbusDlg::OnReceive()
 			CString testLastTime = curTime.Format("%Y-%m-%d %H:%M:%S");
 			JudgeStatus();
 			CdataDlg* pdatadlg = CdataDlg::pDatadlg;
-			pdatadlg->InsertDB(testLastTime, backboard, SprayBatch, vs_x, vs_y, vs_theta, data_good, data_plc, data_spray, data_stop);
+			pdatadlg->InsertDB(testLastTime, backboard, SprayBatch, vs_x, vs_y,vs_x_right,vs_y_right, vs_theta, data_good, data_plc, data_spray, data_stop);
 			insertdata = 1;
 		}
 		CString RecStr;
@@ -1271,8 +1283,8 @@ void CmodbusDlg::OnBnClickedModBtnChange()
 	UpdateData(TRUE);
 	CInfoFile file;
 
-	backboard = m_mod_type;
-	SprayBatch = 0;
+	//backboard = m_mod_type;
+	//SprayBatch = 0;
 	x_floor = m_mod_edit_xfloor;
 	x_ceil = m_mod_edit_xceil;
 	y_floor = m_mod_edit_yfloor;
@@ -1317,7 +1329,7 @@ void CmodbusDlg::OnBnClickedModBtnChange()
 	}
 
 
-	file.WirteDocline(backboard, x_floor, x_ceil, y_floor, y_ceil, theta_floor, theta_ceil,
+	file.WirteDocline(x_floor, x_ceil, y_floor, y_ceil, theta_floor, theta_ceil,
 		hv_Threshold_8, hv_Filter_block_radius_8, rect_height, rect_width, m_startPos_left_8_x,
 		m_startPos_left_8_y, m_startPos_right_8_x, m_startPos_right_8_y,left_baoguang_time,right_baoguang_time);
 }
@@ -1337,13 +1349,13 @@ BOOL CmodbusDlg::OnHelpInfo(HELPINFO* pHelpInfo)
 void CmodbusDlg::JudgeStatus()
 {
 	// TODO: 在此处添加实现代码.
-	if ((vs_x >= x_floor && vs_x <= x_ceil) && (vs_y >= y_floor && vs_y <= y_ceil) && (vs_theta >= theta_floor && vs_theta <= theta_ceil))
+	if ((!flag_left_locate_error) && (!flag_right_locate_error))
 	{
-		data_good = _T("良品");
+		data_good = _T("成功");
 	}
 	else
 	{
-		data_good = _T("非良品");
+		data_good = _T("失败");
 	}
 	if (SprayFlag == false)
 		data_spray = _T("正常");
@@ -1381,3 +1393,14 @@ void CmodbusDlg::BitManipul(int temp)
 
 
 
+
+
+void CmodbusDlg::OnBnClickedModBtnExit()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	exitFlag = true;
+	Sleep(1500);
+	OnClose();
+	Sleep(200);
+	AfxGetMainWnd()->SendMessage(WM_CLOSE);
+}

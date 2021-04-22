@@ -10,6 +10,11 @@ extern CString LastTime;
 extern double vs_x;
 extern double vs_y;
 extern double vs_theta;
+extern double vs_x_right;
+extern double vs_y_right;
+extern double vs_theta_right;
+
+extern double CADdata;
 
 extern int hv_Threshold_8;
 extern int hv_Filter_block_radius_8;
@@ -27,6 +32,9 @@ extern int right_baoguang_time;
 //左右相机智能指针
 extern shared_ptr<SingleCam> leftCam;
 extern shared_ptr<SingleCam> rightCam;
+
+extern bool flag_left_locate_error;
+extern bool flag_right_locate_error;
 
 extern int scale;
 

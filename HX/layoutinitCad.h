@@ -16,6 +16,7 @@ void InitLayoutCad(CLayout& layout, CWnd* parent)
 	layout.RegisterControl(IDC_STATIC_CAD_PIC, CLayout::e_stretch_all);
 
 	layout.RegisterControl(IDC_STATIC_CAD_LOC, CLayout::e_stretch_all);
+	layout.RegisterControl(IDC_CAD_check_outerframe, CLayout::e_stretch_all);
 	layout.RegisterControl(IDC_LIST_CAD_LOC, CLayout::e_stretch_all);
 	
 	layout.RegisterControl(IDC_BUTTON_CAD_SEND, CLayout::e_stretch_all);

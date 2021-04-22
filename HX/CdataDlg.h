@@ -63,7 +63,7 @@ public:
 	void ShowInfo();
 	BOOL DeleteDB();
 	BOOL ClearDB();
-	BOOL InsertDB(CString time, CString type, DWORD batch, double x, double y, double theta, 
+	BOOL InsertDB(CString time, CString type, DWORD batch, double x, double y,double x_right,double y_right, double theta, 
 		CString good, CString plc, CString spray, CString stop);
 //按钮重绘
 public:

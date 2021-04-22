@@ -68,6 +68,7 @@
 #define IDC_BUTTON3                     1031
 #define IDC_BUTTON_CLEAN                1032
 #define IDC_STATIC_CAD_CHOOSE           1033
+#define IDC_MOD_BTN_EXIT                1033
 #define IDC_BUTTON_CAD_OPEN             1034
 #define IDC_EDIT_CAD_PATH               1035
 #define IDC_BUTTON_CAD_DRAW             1036
@@ -227,6 +228,7 @@
 #define IDC_VS_EDIT_X                   1128
 #define IDC_VS_EDIT_Y                   1129
 #define IDC_VS_EDIT_THETA               1130
+#define IDC_CAD_check_outerframe        1131
 #define ID_32771                        32771
 #define ID_32772                        32772
 #define ID_32773                        32773
@@ -252,7 +254,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        165
 #define _APS_NEXT_COMMAND_VALUE         32795
-#define _APS_NEXT_CONTROL_VALUE         1131
+#define _APS_NEXT_CONTROL_VALUE         1132
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

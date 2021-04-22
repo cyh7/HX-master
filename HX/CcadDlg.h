@@ -92,4 +92,7 @@ public:
 	bool DrawLineAnimated();
 
 
+	// 当背板边缘没有黑漆时（即需要抓外框时）勾选此项
+	BOOL m_cad_check_outer_frame;
+	afx_msg void OnBnClickedCadcheckouterframe();
 };

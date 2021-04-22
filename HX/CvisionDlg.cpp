@@ -6,10 +6,10 @@
 #include "HXDlg.h"
 #include "layoutinitVision.h"
 #include <cstdio>
-
+#include "PathGen.h"
 #include <iostream>
 #include "shlwapi.h"
-
+#include "CcadDlg.h"
 #include "opencv_include.h"
 #include "HalconCpp.h"
 using namespace HalconCpp;
@@ -93,6 +93,7 @@ double COL_LEFT_8;
 double ROW_RIGHT_8;
 double COL_RIGHT_8;
 double ANGLE;
+double CADdata;
 
 //定义左右角点的距离
 double Distance;
@@ -319,6 +320,9 @@ int test_times = 0;
 int wrong_times = 0;
 
 
+int i1, i2;
+double left_x1, left_y1, right_x1, right_y1;
+double left_x2, left_y2, right_x2, right_y2;
 
 //定义右相机检测的水平直线最小长度
 int hv_min_length_width_line_right_8 = 200;
@@ -379,7 +383,12 @@ CString LastTime;
 double vs_x;
 double vs_y;
 double vs_theta;
-CvisionDlg* CvisionDlg::pVisiondlg = NULL;
+
+double vs_x_right;
+double vs_y_right;
+double vs_theta_right;
+CvisionDlg * CvisionDlg::pVisiondlg = NULL;
+
 
 UINT ThreadLeftLocation(LPVOID param)
 {
@@ -740,6 +749,7 @@ BOOL CvisionDlg::OnInitDialog()
 	fss["tvec"] >> t_right;
 	fss.release();
 
+
 	//堆上分配CClient 由智能指针管理
 	dc_left_8_ptr = shared_ptr<CClientDC>(new CClientDC(GetDlgItem(IDC_VS_8_LEFT_PIC)));
 	dc_right_8_ptr = shared_ptr<CClientDC>(new CClientDC(GetDlgItem(IDC_VS_8_RIGHT_PIC)));
@@ -1000,12 +1010,27 @@ void CvisionDlg::OnTimer(UINT_PTR nIDEvent)
 		//判断上一次发送的是否为0，为0没有触发receive则断线
 		if (m_Status_T2 == 0)
 		{
-			//m_Status_T2 = 0; //在这里把m_Status_T2置为0
-			//断线标志位
-			DisconnectFlag = true;
-			DisconnectNum += 1;
-			//断线超过60s，即DisconnectNum=50则提示断线
-			if (DisconnectNum >= 300)
+
+			//寄存器地址95 读1位数据
+			//SprayBatch喷涂批次
+			m_vs_edit_batch = SprayBatch;
+			//backboard背板型号
+			m_vs_edit_type = backboard;
+			//
+			m_vs_edit_x = vs_x;
+			m_vs_edit_y = vs_y;
+			if (fabs(vs_theta) < 0.00001)
+				vs_theta = 0;
+			m_vs_edit_theta = vs_theta;
+			UpdateData(FALSE);
+
+			SendOnce_Vision = true;
+			ReadStatus = true;
+			SendData(0, 74, 1);  
+			
+			//判断上一次发送的是否为0，为0没有触发receive则断线
+			if (m_Status_T2 == 0)
+
 			{
 				KillTimer(1);
 				AfxMessageBox(_T("请检查连接！"));
@@ -1173,7 +1198,17 @@ void coordinate_transformation_left()
 	left_robot_coordinate = r_left.inv() * (cam_matrix_left.inv() * s_left * left_pixel_coordinate - t_left);//从标定文件中读标定数据,将像素坐标转换为世界坐标
 	ROW_LEFT_8 = left_robot_coordinate.at<double>(0, 0);
 	COL_LEFT_8 = left_robot_coordinate.at<double>(1, 0);
-	flag_locate_left_over = 1;
+
+	if (i1 == 0)
+	{
+		left_x1 = ROW_LEFT_8;
+		left_y1 = COL_LEFT_8;
+	}
+	if (i1 == 1)
+	{
+		left_x2 = ROW_LEFT_8;
+		left_y2 = COL_LEFT_8;
+	}
 }
 
 void coordinate_transformation_right()
@@ -1193,6 +1228,19 @@ void coordinate_transformation_right()
 	right_robot_coordinate = r_right.inv() * (cam_matrix_right.inv() * s_right * right_pixel_coordinate - t_right);//从标定文件中读标定数据,将像素坐标转换为世界坐标
 	ROW_RIGHT_8 = right_robot_coordinate.at<double>(0, 0);
 	COL_RIGHT_8 = right_robot_coordinate.at<double>(1, 0);
+
+
+	if (i2 == 0)
+	{
+		right_x1 = ROW_RIGHT_8;
+		right_y1 = COL_RIGHT_8;
+	}
+	if (i2 == 1)
+	{
+		right_x2 = ROW_RIGHT_8;
+		right_y2 = COL_RIGHT_8;
+	}
+	
 
 }
 
@@ -1514,6 +1562,8 @@ void CvisionDlg::OnBnClickedVsBtnResend()
 {
 	// TODO: 在此添加控件通知处理程序代码
 	//SetTimer(2, 50, NULL);
+	
+	//CADdata = (PathGen::bp_info.i_width)/10.0;
 	ArriveFlag = true;
 }
 
@@ -1601,6 +1651,8 @@ void CvisionDlg::OnShowLeftPic()
 
 	}
 
+	//remove("D://HX-master/HX-master/HX/left.bmp");
+
 }
 
 
@@ -1655,6 +1707,8 @@ void CvisionDlg::OnShowRightPic()
 		dc_right_8_ptr->LineTo((int)(hv_COL_right_8.D() / scale), (int)(hv_ROW_right_8.D() / scale));
 	}
 
+	//remove("D:/HX-master/HX-master/HX/right.bmp");
+
 }
 
 void CvisionDlg::OnLeftCollectAndCompress()
@@ -1664,9 +1718,10 @@ void CvisionDlg::OnLeftCollectAndCompress()
 	string pic_name = DATA_FOLDER + string("view1.bmp");
 	try
 	{
-		while (!leftCam->m_frame_ready_);
 
-		Sleep(200);
+		while(!leftCam->m_frame_ready_);
+		Sleep(250);
+
 		ReadImage(&ho_image_left_8, "D:/HX-master/HX-master/HX/view1.bmp");
 
 	}
@@ -1684,7 +1739,7 @@ void CvisionDlg::OnLeftCollectAndCompress()
 	img_left = imread("D://HX-master/HX-master/HX/view1.bmp", 0);
 	resize(img_left, img_left, Size(0, 0), 1.0 / ((double)scale), 1.0 / ((double)scale));
 	imwrite("D://HX-master/HX-master/HX/left.bmp", img_left);
-	remove("D://HX-master/HX-master/HX/view1.bmp");
+	//remove("D://HX-master/HX-master/HX/view1.bmp");
 	m_endPos_left_8_x = m_startPos_left_8_x + rect_height;
 	m_endPos_left_8_y = m_startPos_left_8_y + rect_width;
 	//添加裁剪框数据
@@ -1703,7 +1758,10 @@ void CvisionDlg::OnRightCollectAndCompress()
 	string pic_name = DATA_FOLDER + string("view2.bmp");
 	try
 	{
-		while (!rightCam->m_frame_ready_);
+
+		while(!rightCam->m_frame_ready_);
+
+		Sleep(150);
 
 		ReadImage(&ho_image_right_8, "D:/HX-master/HX-master/HX/view2.bmp");
 
@@ -1724,7 +1782,7 @@ void CvisionDlg::OnRightCollectAndCompress()
 	resize(img_right, img_right, Size(0, 0), 1.0 / ((double)scale), 1.0 / ((double)scale));
 	imwrite("D://HX-master/HX-master/HX/right.bmp", img_right);
 
-	remove("D://HX-master/HX-master/HX/view2.bmp");
+	//remove("D://HX-master/HX-master/HX/view2.bmp");
 	//添加裁剪框数据
 	m_endPos_right_8_x = m_startPos_right_8_x + rect_height;
 	m_endPos_right_8_y = m_startPos_right_8_y + rect_width;
@@ -2050,42 +2108,73 @@ void CvisionDlg::OnInitLocateData()
 }
 
 
+void zero_left_data()
+{
+	//将左图定位数据比较用的临时变量置0
+	left_x1 = 0;
+	left_x2 = 0;
+	left_y1 = 0;
+	left_y2 = 0;
+}
+
+void zero_right_data()
+{
+	//将左图定位数据比较用的临时变量置0
+	right_x1 = 0;
+	right_x2 = 0;
+	right_y1 = 0;
+	right_y2 = 0;
+}
+
+
 void CvisionDlg::OnAllLeftLocate()
 {
-	// 此函数实现左相机采图,读图,定位,显示,坐标转换的全功能
-	left_cut_pic_begin_time = GetTickCount64();
-	try
-	{
-		//发送软触发指令
-		leftCam->m_frame_ready_ = false;
-		//leftCam->ObjFeatureControlPtr->GetCommandFeature("TriggerSoftware")->Execute();
-		leftCam->SendSoftwareTrigger();
-	}
-	catch (CGalaxyException& e)
-	{
-		MessageBox(CString(e.what()));
-		return;
-	}
-	catch (std::exception& e)
-	{
-		MessageBox(CString(e.what()));
-		return;
-	}
-	while (leftCam->m_frame_ready_ == false)
-	{
-		Sleep(100);
-		//等待采图完成
-	}
-	left_loacate_begin_time = GetTickCount64();
 
-	flag_left_locate_error = false;
-	OnLeftCollectAndCompress();
-	locateleft();
-	OnShowLeftPic();
-	if (!flag_left_locate_error)
+	zero_left_data();
+
+
+	for (i1 = 0; i1 < 2; i1++)
 	{
-		coordinate_transformation_left();
+		// 此函数实现左相机采图,读图,定位,显示,坐标转换的全功能
+		left_cut_pic_begin_time = GetTickCount64();
+		try
+		{
+			//发送软触发指令
+			leftCam->m_frame_ready_ = false;
+			leftCam->ObjFeatureControlPtr->GetCommandFeature("TriggerSoftware")->Execute();
+		}
+		catch (CGalaxyException& e)
+		{
+			MessageBox(CString(e.what()));
+			return;
+		}
+		catch (std::exception& e)
+		{
+			MessageBox(CString(e.what()));
+			return;
+		}
+		while (leftCam->m_frame_ready_ == false)
+		{
+			Sleep(100);
+			//等待采图完成
+		}
+		left_loacate_begin_time = GetTickCount64();
+
+		flag_left_locate_error = false;
+		OnLeftCollectAndCompress();
+		locateleft();
+		OnShowLeftPic();
+		if (!flag_left_locate_error)
+		{
+			coordinate_transformation_left();
+		}
+		if ((i1 == 1) && (left_x1!=0) && (left_x2) && ((fabs(left_x1 - left_x2) > 0.7) || (fabs(left_y1 - left_y2) > 0.7)))
+		{
+			flag_left_locate_error = true;
+			locate_times_error++;
+		}
 	}
+	
 
 	flag_locate_left_over = 1;
 	while (!flag_locate_right_over);
@@ -2093,7 +2182,7 @@ void CvisionDlg::OnAllLeftLocate()
 
 	if (flag_locate_left_over == 1 && flag_locate_right_over == 1)
 	{
-
+		
 		double_thread_time = GetTickCount64();
 		t211 = GetTickCount64();
 		t211 = t211 - t111;
@@ -2119,20 +2208,29 @@ void CvisionDlg::OnAllLeftLocate()
 
 			ANGLE = -atan((ROW_RIGHT_8 - ROW_LEFT_8) / (COL_RIGHT_8 - COL_LEFT_8));
 			//OnShowList();
-
+			//根据CAD界面的check选择框确定计算数据是和内框长度比较还是和外框长度比较
+			CcadDlg* pcaddlg = CcadDlg::pCaddlg;
+			if(pcaddlg->m_cad_check_outer_frame)
+				CADdata = PathGen::bp_info.e_width;
+			else
+				CADdata = PathGen::bp_info.i_width;
 			//计算左右角点的距离，方便和CAD给出的数据进行比较
-			Distance = sqrt((ROW_RIGHT_8 - ROW_LEFT_8) * (ROW_RIGHT_8 - ROW_LEFT_8) + (COL_RIGHT_8 - COL_LEFT_8) * (COL_RIGHT_8 - COL_LEFT_8));
-			if (fabs(Distance - CADdata) > 3.00)
+
+			Distance = sqrt((ROW_RIGHT_8 - ROW_LEFT_8) * (ROW_RIGHT_8 - ROW_LEFT_8) + (COL_RIGHT_8 - COL_LEFT_8)*(COL_RIGHT_8 - COL_LEFT_8));
+			if (fabs(Distance - CADdata / 10.0) > 3.00)
+
 			{
 				locate_times_error++;
 				flag_right_locate_error = true;
 			}
 
-			if (fabs(Distance - CADdata) <= 3.00)
+			if (fabs(Distance - CADdata / 10.0) <= 3.00)
 			{
 				//将定位数据传给数据库
 				vs_x = ROW_LEFT_8;
 				vs_y = COL_LEFT_8;
+				vs_x_right = ROW_RIGHT_8;
+				vs_y_right = COL_RIGHT_8;
 				vs_theta = ANGLE;
 				//将定位数据传给PLC
 				Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X * 10);
@@ -2150,12 +2248,16 @@ void CvisionDlg::OnAllLeftLocate()
 			vs_x = -1;
 			vs_y = -1;
 			vs_theta = -1;
+			vs_x_right = -1;
+			vs_y_right = -1;
 			//将定位数据传给PLC
 			Result[0] = -1;
 			Result[1] = -1;
 			Result[2] = -1;
 
 			//发送完错误信号 开启查询定时器 等待PLC按下重新识别按钮
+			SendDone = true;
+			insertdata = 0;
 			Sleep(100);
 			SendData(1, 73, 21061);
 			Sleep(50);
@@ -2168,48 +2270,63 @@ void CvisionDlg::OnAllLeftLocate()
 		}
 		//在错误次数==1或==2时并且继续出错时，将到位标志置1，再次执行定位
 		if ((locate_times_error == 1 && (flag_right_locate_error || flag_left_locate_error)) || (locate_times_error == 2 && (flag_right_locate_error || flag_left_locate_error)))
+		{
+			Sleep(250);
 			ArriveFlag = true;
+		}
 	}
 
 }
 
 void CvisionDlg::OnAllRightLocate()
 {
+	zero_right_data();
 	// 此函数实现右相机采图,读图,定位,显示,坐标转换的全功能
-	right_cut_pic_begin_time = GetTickCount64();
-	try
-	{
-		//发送软触发指令
-		rightCam->m_frame_ready_ = false;
-		//rightCam->ObjFeatureControlPtr->GetCommandFeature("TriggerSoftware")->Execute();
-		rightCam->SendSoftwareTrigger();
-	}
-	catch (CGalaxyException& e)
-	{
-		MessageBox(CString(e.what()));
-		return;
-	}
-	catch (std::exception& e)
-	{
-		MessageBox(CString(e.what()));
-		return;
-	}
-	while (rightCam->m_frame_ready_ == false)
-	{
-		//等待采图完成
-		Sleep(100);
-	}
-	right_loacate_begin_time = GetTickCount64();
 
-	flag_right_locate_error = false;
-	OnRightCollectAndCompress();
-	locateright();
-
-	OnShowRightPic();
-	if (!flag_right_locate_error)
+	for (i2 = 0; i2 < 2; i2++)
 	{
-		coordinate_transformation_right();
+		// 此函数实现右相机采图,读图,定位,显示,坐标转换的全功能
+		right_cut_pic_begin_time = GetTickCount64();
+		try
+		{
+			//发送软触发指令
+			rightCam->m_frame_ready_ = false;
+			rightCam->ObjFeatureControlPtr->GetCommandFeature("TriggerSoftware")->Execute();
+		}
+		catch (CGalaxyException& e)
+		{
+			MessageBox(CString(e.what()));
+			return;
+		}
+		catch (std::exception& e)
+		{
+			MessageBox(CString(e.what()));
+			return;
+		}
+		while (rightCam->m_frame_ready_ == false)
+		{
+			//等待采图完成
+			Sleep(100);
+		}
+		right_loacate_begin_time = GetTickCount64();
+
+		flag_right_locate_error = false;
+		OnRightCollectAndCompress();
+		locateright();
+
+		OnShowRightPic();
+		if (!flag_right_locate_error)
+		{
+			coordinate_transformation_right();
+		}
+		if ((i2 == 1) && (right_x1 != 0) && (right_x2 != 0) && ((fabs(right_x1 - right_x2) > 0.7) || (fabs(right_y1 - right_y2) > 0.7)))
+		{
+			flag_right_locate_error = true;
+			locate_times_error++;
+		}
+
 	}
+	
 	//flag_locate_over++标志右相机坐标转换完成
 	flag_locate_right_over = 1;
 
@@ -2219,6 +2336,7 @@ void CvisionDlg::OnAllRightLocate()
 	right_loacate_over_time = GetTickCount();
 	if (flag_locate_left_over == 1 && flag_locate_right_over == 1)
 	{
+		
 		double_thread_time = GetTickCount64();
 		t211 = GetTickCount64();
 		t211 = t211 - t111;
@@ -2235,20 +2353,28 @@ void CvisionDlg::OnAllRightLocate()
 			ANGLE = -atan((ROW_RIGHT_8 - ROW_LEFT_8) / (COL_RIGHT_8 - COL_LEFT_8));
 			//OnShowList();
 
+			//根据CAD界面的check选择框确定计算数据是和内框长度比较还是和外框长度比较
+			CcadDlg* pcaddlg = CcadDlg::pCaddlg;
+			if (pcaddlg->m_cad_check_outer_frame)
+				CADdata = PathGen::bp_info.e_width;
+			else
+				CADdata = PathGen::bp_info.i_width;
 			//计算左右角点的距离，方便和CAD给出的数据进行比较
 			Distance = sqrt((ROW_RIGHT_8 - ROW_LEFT_8) * (ROW_RIGHT_8 - ROW_LEFT_8) + (COL_RIGHT_8 - COL_LEFT_8) * (COL_RIGHT_8 - COL_LEFT_8));
 			//左右角点的距离和CAD给出的数据进行比较，小于3毫米视为正常
-			if (fabs(Distance - CADdata) > 3.00)
+			if (fabs(Distance - CADdata / 10.0) > 3.00)
 			{
 				locate_times_error++;
 				flag_right_locate_error = true;
 			}
 
-			if (fabs(Distance - CADdata) <= 3.00)
+			if (fabs(Distance - CADdata / 10.0) <= 3.00)
 			{
 				//将定位数据传给数据库
 				vs_x = ROW_LEFT_8;
 				vs_y = COL_LEFT_8;
+				vs_x_right = ROW_RIGHT_8;
+				vs_y_right = COL_RIGHT_8;
 				vs_theta = ANGLE;
 				//将定位数据传给PLC
 				Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X * 10);
@@ -2265,12 +2391,16 @@ void CvisionDlg::OnAllRightLocate()
 			vs_x = -1;
 			vs_y = -1;
 			vs_theta = -1;
+			vs_x_right = -1;
+			vs_y_right = -1;
 			//将定位数据传给PLC
 			Result[0] = -1;
 			Result[1] = -1;
 			Result[2] = -1;
 
 			//发送完错误信号 开启查询定时器 等待PLC按下重新识别按钮
+			SendDone = true;
+			insertdata = 0;
 			Sleep(100);
 			SendData(1, 73, 21061);
 			Sleep(50);
@@ -2282,8 +2412,13 @@ void CvisionDlg::OnAllRightLocate()
 
 		}
 		//if (((locate_times_error == 1 && (flag_right_locate_error || flag_left_locate_error))|| locate_times_error == 2)
-		if ((locate_times_error == 1 && (flag_right_locate_error || flag_left_locate_error)) || (locate_times_error == 2 && (flag_right_locate_error || flag_left_locate_error)))
+
+		if((locate_times_error == 1&&(flag_right_locate_error|| flag_left_locate_error))|| (locate_times_error == 2 && (flag_right_locate_error || flag_left_locate_error)))
+		{
+			Sleep(250);
+
 			ArriveFlag = true;
+		}
 	}
 
 }
