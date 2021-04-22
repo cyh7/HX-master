@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include "pch.h"
 #include "opencv_include.h"
@@ -8,7 +8,7 @@ using namespace std;
 using namespace cv;
 
 
-//³õÊ¼»¯PitureControl¿Ø¼ş
+//åˆå§‹åŒ–PitureControlæ§ä»¶
 void PicConInit(HWND hWnd, int IDD, const char* windowname);
 
 
@@ -20,18 +20,18 @@ public:
 	void DoOnDeviceOfflineEvent(void* pUserParam);
 };
 
-//ÓÃ»§¼Ì³ĞÊôĞÔ¸üĞÂÊÂ¼ş´¦ÀíÀà
+//ç”¨æˆ·ç»§æ‰¿å±æ€§æ›´æ–°äº‹ä»¶å¤„ç†ç±»
 
 class CSampleFeatureEventHandler : public IFeatureEventHandler
 {
 public:
 	void DoOnFeatureEvent(const GxIAPICPP::gxstring& strFeatureName, void* pUserParam)
 	{
-		cout << "ÊÕµ½ÆØ¹â½áÊøÊÂ¼ş!" << endl;
+		cout << "æ”¶åˆ°æ›å…‰ç»“æŸäº‹ä»¶!" << endl;
 	}
 };
 
-//ÓÃ»§¼Ì³Ğ²É¼¯ÊÂ¼ş´¦ÀíÀà
+//ç”¨æˆ·ç»§æ‰¿é‡‡é›†äº‹ä»¶å¤„ç†ç±»
 class CSampleCaptureEventHandler : public ICaptureEventHandler
 {
 public:
@@ -43,10 +43,10 @@ class SingleCam;
 
 
 /// <summary>
-/// Cam×ÜÏß±£Áô£¬½«ËüÅäºÏÉÏ¸´Î»¹¦ÄÜ£¬°Ñ¸´Î»¹¦ÄÜ×ö½øÀ´
-/// ·ÅÈëÁ½¸öÏà»ú
+/// Camæ€»çº¿ä¿ç•™ï¼Œå°†å®ƒé…åˆä¸Šå¤ä½åŠŸèƒ½ï¼ŒæŠŠå¤ä½åŠŸèƒ½åšè¿›æ¥
+/// æ”¾å…¥ä¸¤ä¸ªç›¸æœº
 /// </summary>
-class CamCon //Cam×ÜÏß
+class CamCon //Camæ€»çº¿
 {
 public:
 
@@ -59,13 +59,13 @@ public:
 	CamCon() { CamInit(); };
 	~CamCon() { CamUnInit(); };
 	int init_all_cam(vector<shared_ptr<SingleCam>>& cam_vec);
-	//³õÊ¼»¯º¯Êı
+	//åˆå§‹åŒ–å‡½æ•°
 	int CamInit();
 	int CamUnInit();
 
-	//É¨ÃèÏà»úº¯Êı
+	//æ‰«æç›¸æœºå‡½æ•°
 	size_t ScanCam();
-	//¸´Î»Ïà»úº¯Êı
+	//å¤ä½ç›¸æœºå‡½æ•°
 	void SoftResetAllCam();
 
 	static shared_ptr<SingleCam> LEFT_CAM;
@@ -74,16 +74,16 @@ public:
 public:
 
 private:
-	//½ûÖ¹¸´ÖÆ
+	//ç¦æ­¢å¤åˆ¶
 	CamCon(const CamCon&);
 	CamCon operator=(const CamCon&);
 
-	gxdeviceinfo_vector vectorDeviceInfo;//Õû¸ö×ÜÏß°üº¬µÄÏà»úĞÅÏ¢
+	gxdeviceinfo_vector vectorDeviceInfo;//æ•´ä¸ªæ€»çº¿åŒ…å«çš„ç›¸æœºä¿¡æ¯
 
 	vector<gxstring> macAddrList;
 
 };
-class SingleCam//¶ÀÁ¢Ïà»ú
+class SingleCam//ç‹¬ç«‹ç›¸æœº
 {
 	friend class CvisonDlg;
 	friend class CSampleCaptureEventHandler;
@@ -94,10 +94,13 @@ public:
 	~SingleCam();
 public:
 
-	//ÉèÖÃÏà»úÎªÁ¬ĞøÄ£Ê½
+	//è®¾ç½®ç›¸æœºä¸ºè¿ç»­æ¨¡å¼
 	void SetAcqusition_Continuous();
-	//ÉèÖÃÏà»úÎªÈí´¥·¢Ä£Ê½
+	//è®¾ç½®ç›¸æœºä¸ºè½¯è§¦å‘æ¨¡å¼
 	void SetAcqusition_SoftwareTrigger();
+
+	//å‘é€è½¯è§¦å‘æŒ‡ä»¤
+	void SendSoftwareTrigger();
 
 
 	void Record_start();
@@ -126,67 +129,67 @@ public:
 		return m_dcurCamShutterTime;
 	}
 public:
-	//±êÖ¾Î»
-	bool m_bIsOffline;     //ÊÇ·ñÀëÏß
-	bool m_bIsSnap;        //ÊÇ·ñÔÚ²É¼¯
-	bool m_bIsOpened;      //ÊÇ·ñÒÑ¾­´ò¿ª
-	bool m_bTriggerMode;   //ÊÇ·ñÖ§³Ö´¥·¢
-	bool m_bTriggerSource; //ÊÇ·ñÖ§³ÖÑ¡Ôñ´¥·¢Ô´
-	bool m_frame_ready_;//Ö¡ÅÄÉãÍê±Ï
-	//Éè±¸²ÎÊı£¬±ÈÈçÔöÒæ×î´óÖµ£¬ÆØ¹âÊ±¼ä·¶Î§µÈ
-	double m_dShutterValueMax;//¿ìÃÅ
+	//æ ‡å¿—ä½
+	bool m_bIsOffline;     //æ˜¯å¦ç¦»çº¿
+	bool m_bIsSnap;        //æ˜¯å¦åœ¨é‡‡é›†
+	bool m_bIsOpened;      //æ˜¯å¦å·²ç»æ‰“å¼€
+	bool m_bTriggerMode;   //æ˜¯å¦æ”¯æŒè§¦å‘
+	bool m_bTriggerSource; //æ˜¯å¦æ”¯æŒé€‰æ‹©è§¦å‘æº
+	bool m_frame_ready_;//å¸§æ‹æ‘„å®Œæ¯•
+	//è®¾å¤‡å‚æ•°ï¼Œæ¯”å¦‚å¢ç›Šæœ€å¤§å€¼ï¼Œæ›å…‰æ—¶é—´èŒƒå›´ç­‰
+	double m_dShutterValueMax;//å¿«é—¨
 	double m_dShutterValueMin;
-	double m_dGainValueMax;//ÔöÒæ
+	double m_dGainValueMax;//å¢ç›Š
 	double m_dGainValueMin;
 
-	CGXFeatureControlPointer   ObjFeatureControlPtr;//Éè±¸ÊôĞÔ¿ØÖÆÆ÷
-	CGXFeatureControlPointer   ObjStreamFeatureControlPtr;//Á÷²ã¿ØÖÆÆ÷¶ÔÏó
+	CGXFeatureControlPointer   ObjFeatureControlPtr;//è®¾å¤‡å±æ€§æ§åˆ¶å™¨
+	CGXFeatureControlPointer   ObjStreamFeatureControlPtr;//æµå±‚æ§åˆ¶å™¨å¯¹è±¡
 private:
-	//½ûÖ¹¸´ÖÆÏà»ú
+	//ç¦æ­¢å¤åˆ¶ç›¸æœº
 	SingleCam(const SingleCam&);
 	const SingleCam& operator=(const SingleCam&);
-	//µôÏß´¦Àí
+	//æ‰çº¿å¤„ç†
 	void __ProcessOffline();
-	//ÖØÁ¬º¯Êı
+	//é‡è¿å‡½æ•°
 	void __Recovery();
-	//³õÊ¼»¯Ïà»ú²ÎÊı
+	//åˆå§‹åŒ–ç›¸æœºå‚æ•°
 	void __InitParam();
-	//¸÷ÖÖHandler
-	IDeviceOfflineEventHandler* pDeviceOfflineEventHandler;///<µôÏßÊÂ¼ş»Øµ÷¶ÔÏó
-	IFeatureEventHandler* pFeatureEventHandler;///<Ô¶¶ËÉè±¸ÊÂ¼ş»Øµ÷¶ÔÏó
-	ICaptureEventHandler* pCaptureEventHandler;///<²É¼¯»Øµ÷¶ÔÏó
+	//å„ç§Handler
+	IDeviceOfflineEventHandler* pDeviceOfflineEventHandler;///<æ‰çº¿äº‹ä»¶å›è°ƒå¯¹è±¡
+	IFeatureEventHandler* pFeatureEventHandler;///<è¿œç«¯è®¾å¤‡äº‹ä»¶å›è°ƒå¯¹è±¡
+	ICaptureEventHandler* pCaptureEventHandler;///<é‡‡é›†å›è°ƒå¯¹è±¡
 
 
-	CGXDevicePointer ObjDevicePtr;//Éè±¸Ö¸Õë
-	CGXStreamPointer ObjStreamPtr;//´ò¿ªÁ÷
+	CGXDevicePointer ObjDevicePtr;//è®¾å¤‡æŒ‡é’ˆ
+	CGXStreamPointer ObjStreamPtr;//æ‰“å¼€æµ
 
-	GX_DEVICE_OFFLINE_CALLBACK_HANDLE hDeviceOffline; //µôÏß»Øµ÷¾ä±ú
-
-
-	//Ïà»ú²ÎÊı£¬ÔİÊ±ÉèÖÃÁ½Ïî
-	double m_dcurCamGain;       //Ïà»úµ±Ç°ÔöÒæ
-	double m_dcurCamShutterTime;//Ïà»úµ±Ç°¿ìÃÅÊ±¼ä
+	GX_DEVICE_OFFLINE_CALLBACK_HANDLE hDeviceOffline; //æ‰çº¿å›è°ƒå¥æŸ„
 
 
-	//ĞòÁĞºÅ
+	//ç›¸æœºå‚æ•°ï¼Œæš‚æ—¶è®¾ç½®ä¸¤é¡¹
+	double m_dcurCamGain;       //ç›¸æœºå½“å‰å¢ç›Š
+	double m_dcurCamShutterTime;//ç›¸æœºå½“å‰å¿«é—¨æ—¶é—´
+
+
+	//åºåˆ—å·
 	gxstring serialNum;
-	//»­ÃæÏÔÊ¾´°¿ÚÃû³Æ
+	//ç”»é¢æ˜¾ç¤ºçª—å£åç§°
 	string showWindowName;
 
-	//Ô´Í¼
+	//æºå›¾
 	Mat src;
-	//²ÃÇĞºóµÄÔ­Í¼Ïñ
+	//è£åˆ‡åçš„åŸå›¾åƒ
 	Mat croppedSrc;
-	//ËõĞ¡ºóµÄÔ­Í¼
+	//ç¼©å°åçš„åŸå›¾
 	Mat resizedSrc;
-	//ËõĞ¡ºóµÄ²ÃÇĞÍ¼
+	//ç¼©å°åçš„è£åˆ‡å›¾
 	Mat resizedCropped;
 
 };
 
 
 
-//Ö®ºóË«Ïà»ú»á¸ÄµÄ´úÂë
+//ä¹‹ååŒç›¸æœºä¼šæ”¹çš„ä»£ç 
 int StartCam(std::shared_ptr<SingleCam> p);
 int StopCam(std::shared_ptr<SingleCam> p);
 
@@ -201,6 +204,3 @@ static vector<shared_ptr<SingleCam>>& SCV()
 	static vector<shared_ptr<SingleCam>> c1;
 	return c1;
 }
-
-
-
