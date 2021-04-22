@@ -390,6 +390,18 @@ void SingleCam::SetAcqusition_SoftwareTrigger()
 	}
 }
 
+void SingleCam::SendSoftwareTrigger()
+{
+	try
+	{
+		ObjFeatureControlPtr->GetCommandFeature("TriggerSoftware")->Execute();
+	}
+	catch (CGalaxyException& ge)
+	{
+		AfxMessageBox(CString(ge.what()));
+	}
+}
+
 void SingleCam::Record_start()
 {
 	try
@@ -511,7 +523,6 @@ void SingleCam::__InitParam()
 	m_bTriggerMode = ObjFeatureControlPtr->IsImplemented("TriggerMode");
 	if (m_bTriggerMode)
 	{
-
 		ObjFeatureControlPtr->GetEnumFeature("TriggerMode")->SetValue("Off");
 	}
 
@@ -600,7 +611,12 @@ void CSampleCaptureEventHandler::DoOnImageCaptured(CImageDataPointer& objImageDa
 		//掉线处理
 		//重连
 	}
-	else
+	else if (objImageDataPointer->GetStatus() == GX_FRAME_STATUS_INCOMPLETE)
+	{
+		Cam->SendSoftwareTrigger();
+		return;
+	}
+	else if (objImageDataPointer->GetStatus() == GX_FRAME_STATUS_SUCCESS)
 	{
 		//继续采集
 		Cam->src.create(objImageDataPointer->GetHeight(), objImageDataPointer->GetWidth(), CV_8UC3);
