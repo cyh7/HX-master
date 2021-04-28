@@ -257,15 +257,15 @@ BOOL CdataDlg::OnInitDialog()
 	m_data_pic_logo.SetBitmap(m_data_hBitmap_logo);
 
 	ConnectDB();
-	if (ConnectSucces == true)
-	{
-		//查询数据
-		SelectDB();
-		//获取数据;
-		GetDataFromDB();
-		//显示数据
-		ShowInfo();
-	}
+	//if (ConnectSucces == true)
+	//{
+	//	//查询数据
+	//	SelectDB();
+	//	//获取数据;
+	//	GetDataFromDB();
+	//	//显示数据
+	//	ShowInfo();
+	//}
 
 	////查询数据
 	//SelectDB();

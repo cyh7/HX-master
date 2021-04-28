@@ -118,6 +118,7 @@ public:
 	/*CWnd* pwnd_right_8;
 	CClientDC dc_right_8;*/
 	std::shared_ptr<CClientDC> dc_right_8_ptr;
+	CPen pen_right_8;
 	CPen pen_left_8;
 	CListCtrl m_vs_list_location_data;
 

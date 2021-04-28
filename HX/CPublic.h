@@ -73,16 +73,17 @@ public:
 	//返回左相机SN
 	static const string& LEFT_CAM_SN()
 	{
-		static const string LCSN("LT0200091520");
-		//static const string LCSN("LT0200091519");
+
+		//static const string LCSN("LT0200091520");//8线相机序列号
+		static const string LCSN("LT0200091519");//7线相机序列号
 		
 		return LCSN;
 	}
 	//返回右相机SN
 	static const string& RIGHT_CAM_SN()
 	{
-		static const string RCSN("WM0200120251");
-		//static const string RCSN("LT0200091521");
+		//static const string RCSN("WM0200120251");//8线相机序列号
+		static const string RCSN("LT0200091521");//7线相机序列号
 		return RCSN;
 	}
 

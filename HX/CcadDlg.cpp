@@ -686,7 +686,7 @@ void CcadDlg::OnTimer(UINT_PTR nIDEvent)
 				KillTimer(2);
 				SendOnce = true;
 				SendData(1, 99, locGlueNum / 3);
-				Sleep(100);
+				Sleep(150);
 				SendData(1, 78, 21573);
 				//发送完毕之后，可以考虑每次按下发送键的时候把这个置为0，把定位数据置为0，方便下次发送
 				m_CadT2 = GetTickCount64();
@@ -770,6 +770,41 @@ void CcadDlg::OnTimer(UINT_PTR nIDEvent)
 		}
 	}
 	break;
+	case 4:
+	{
+		SendOnce = true;
+		ReadStatus = false;
+		SendData(0, 76, 1);//255
+		plcRecNum += 1;//50 * 20 * 3 
+		if (plcRecNum <= 20)
+		{
+			if (PlcCadRecFlag == true)
+			{
+				KillTimer(4);
+				PlcCadRecFlag = false;
+				locGlueNum = 0;
+				plcRecNum = 0;
+				Sleep(150);
+				SetTimer(2, 100, NULL);
+			}
+
+		}
+		else
+		{
+			KillTimer(4);
+			Sleep(50);
+			MessageBox(_T("请重新发送CAD数据!"));
+
+			PlcCadRecFlag = false;
+			plcRecNum = 0;
+			locGlueNum = 0;
+
+
+			CvisionDlg* pvsdlg = CvisionDlg::pVisiondlg;
+			pvsdlg->ReSetTime();
+		}
+	}
+	break;
 	}
 
 
@@ -810,11 +845,12 @@ void CcadDlg::OnBnClickedButtonCadSend()
 	CvisionDlg* pvsdlg = CvisionDlg::pVisiondlg;
 	pvsdlg->KillTime1();
 	//begin ASCII码BG
-	Sleep(100);
+	Sleep(200);
 	SendData(1, 76, 18242);
 	Sleep(100);
-	SetTimer(2, 100, NULL);
 
+	//SetTimer(2, 100, NULL);
+	SetTimer(4, 50, NULL);
 
 
 	////send();

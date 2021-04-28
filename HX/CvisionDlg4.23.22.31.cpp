@@ -21,8 +21,8 @@ using namespace HalconCpp;
 bool flag_open_cam = false;
 
 //设置左右相机曝光时间
-int left_baoguang_time = 280000;
-int right_baoguang_time = 280000;
+int left_baoguang_time = 160000;
+int right_baoguang_time = 160000;
 
 //CWinThread * hthreadRightLocation;
 //CWinThread * hthreadLeftLocation;
@@ -49,7 +49,6 @@ int Result[3] = {0,0,0};
 int BIAO_X=700;
 int BIAO_Y=-450;
 
-int CADtest(bool);
 
 //左右相机智能指针
 shared_ptr<SingleCam> leftCam;
@@ -99,7 +98,6 @@ double ROW_RIGHT_8;
 double COL_RIGHT_8;
 double ANGLE;
 double CADdata;
-int flag_r = 0;//7线flag_r设置为0，8线flag_r设置为12500
 
 //定义左右角点的距离
 double Distance;
@@ -449,6 +447,8 @@ UINT ThreadLeftLocation(LPVOID param)
 		////t1 = TimeGetTime();
 		t1 = GetTickCount64();
 
+		//if (flag_collect_success == true && flag_left_locate_begin == 0)
+		//1.24晚21.14联调
 		if (ArriveFlag == true && flag_left_locate_begin == 0)
 		{
 			flag_left_locate_begin = 1;
@@ -474,25 +474,17 @@ UINT ThreadRightLocation(LPVOID param)
 	//	long t1, t2;
 	//	//t1 = TimeGetTime();
 	//	t1 = GetTickCount64();
-	//55寸及以下尺寸版本只用左相机定位
-		
-		
-	if (ArriveFlag == true && flag_right_locate_begin==0)
-	{
-		CADtest(false);
-		if (CADdata > flag_r)
+
+		if (ArriveFlag == true && flag_right_locate_begin==0)
 		{
+			
 			flag_right_locate_begin = 1;
 			pcollectdlg->OnAllRightLocate();
 		}
-		
-	}
-	/*t2 = GetTickCount64();
-	str.Format(L" right time:%dms", t2 - t1);
-	AfxMessageBox(str);*/
-	//Sleep(100);
-		
-		
+		/*t2 = GetTickCount64();
+		str.Format(L" right time:%dms", t2 - t1);
+		AfxMessageBox(str);*/
+		//Sleep(100);
 	}
 	//AfxEndThread(0);
 	return 0;
@@ -803,7 +795,6 @@ BOOL CvisionDlg::OnInitDialog()
 	fss["tvec"] >> t_right;
 	fss.release();
 
-	
 
 	//堆上分配CClient 由智能指针管理
 	dc_left_8_ptr = shared_ptr<CClientDC>(new CClientDC(GetDlgItem(IDC_VS_8_LEFT_PIC)));
@@ -1694,9 +1685,6 @@ void CvisionDlg::OnShowLeftPic()
 {
 	if( hBmp_8_left != NULL)
 		DeleteObject(hBmp_8_left);
-	//下面这个if语句只有7线才注释，8线不注释此句
-	/*if ((hBmp_8_right != NULL) && (CADdata<12500))
-		DeleteObject(hBmp_8_right);*/
 	// 左侧相机图片显示
 	hBmp_8_left = (HBITMAP)::LoadImage(AfxGetInstanceHandle(), L"D://HX-master/HX-master/HX/left.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 	m_vs_pic_8_left.SetBitmap(hBmp_8_left);    // 设置图片控件m_jzmPicture的位图图片为IDB_BITMAP1  
@@ -1857,7 +1845,7 @@ void CvisionDlg::OnLeftCollectAndCompress()
 	hv_Column2_left_8 = scale * m_endPos_left_8_x;
 	CropPart(ho_image_left_8, &ho_ImagePart_left_8, hv_Row1_left_8, hv_Column1_left_8, hv_Column2_left_8 - hv_Column1_left_8,
 		hv_Row2_left_8 - hv_Row1_left_8);
-	//remove("D://HX-master/HX-master/HX/view1.bmp");
+	remove("D://HX-master/HX-master/HX/view1.bmp");
 }
 
 
@@ -1900,7 +1888,7 @@ void CvisionDlg::OnRightCollectAndCompress()
 	hv_Column2_right_8 = scale * m_endPos_right_8_x;
 	CropPart(ho_image_right_8, &ho_ImagePart_right_8, hv_Row1_right_8, hv_Column1_right_8, hv_Column2_right_8 - hv_Column1_right_8,
 		hv_Row2_right_8 - hv_Row1_right_8);
-	//remove("D://HX-master/HX-master/HX/view2.bmp");
+	remove("D://HX-master/HX-master/HX/view2.bmp");
 }
 
 
@@ -2221,7 +2209,7 @@ void CvisionDlg::OnInitLocateData()
 	hv_height_line_ColEnd_right_8 = 0;
 }
 
-int CADtest(bool fl)
+int CADtest()
 {
 	//根据CAD界面的check选择框确定计算数据是和内框长度比较还是和外框长度比较
 	CcadDlg* pcaddlg = CcadDlg::pCaddlg;
@@ -2229,21 +2217,17 @@ int CADtest(bool fl)
 		CADdata = PathGen::bp_info.e_width;
 	else
 		CADdata = PathGen::bp_info.i_width;
-	if (fl)
+	//计算左右角点的距离，方便和CAD给出的数据进行比较
+	Distance = sqrt((ROW_RIGHT_8 - ROW_LEFT_8) * (ROW_RIGHT_8 - ROW_LEFT_8) + (COL_RIGHT_8 - COL_LEFT_8)*(COL_RIGHT_8 - COL_LEFT_8));
+	if (fabs(Distance - CADdata / 10.0) > 3.00)
 	{
-		//计算左右角点的距离，方便和CAD给出的数据进行比较
-		Distance = sqrt((ROW_RIGHT_8 - ROW_LEFT_8) * (ROW_RIGHT_8 - ROW_LEFT_8) + (COL_RIGHT_8 - COL_LEFT_8)*(COL_RIGHT_8 - COL_LEFT_8));
-		if (fabs(Distance - CADdata / 10.0) > 3.00)
-		{
-			locate_times_error++;
-			flag_right_locate_error = true;
-			return 0;
-		}
-
-		if (fabs(Distance - CADdata / 10.0) <= 3.00)
-			return 1;
+		locate_times_error++;
+		flag_right_locate_error = true;
+		return 0;
 	}
-	return 0;
+
+	if (fabs(Distance - CADdata / 10.0) <= 3.00)
+		return 1;
 }
 
 void CvisionDlg::OnAllLeftLocate()
@@ -2288,93 +2272,21 @@ void CvisionDlg::OnAllLeftLocate()
 
 	flag_locate_left_over = 1;
 	left_loacate_over_time = GetTickCount64();
-	
-	//背板尺寸大于55寸使用左右相机同时定位
-	if (CADdata > flag_r)
+
+	if (flag_locate_left_over == 1 && flag_locate_right_over == 1)
 	{
-		if (flag_locate_left_over == 1 && flag_locate_right_over == 1)
-		{
-			double_thread_time = GetTickCount64();
-			t211 = GetTickCount64();
-			t211 = t211 - t111;
-			left_cut_pic_begin_time;
-			left_loacate_begin_time;
-			left_loacate_over_time;
-			right_cut_pic_begin_time;
-			right_loacate_begin_time;
-			right_loacate_over_time;
-			double_thread_time;
-			///AfxMessageBox(str); */
+		double_thread_time = GetTickCount64();
+		t211 = GetTickCount64();
+		t211 = t211 - t111;
+		left_cut_pic_begin_time;
+		left_loacate_begin_time;
+		left_loacate_over_time;
+		right_cut_pic_begin_time;
+		right_loacate_begin_time;
+		right_loacate_over_time;
+		double_thread_time;
+		///AfxMessageBox(str); */
 
-			ArriveFlag = false;
-			flag_locate_left_over = 0;
-			flag_locate_right_over = 0;
-
-			//左右相机开始标志位置零
-			flag_left_locate_begin = 0;
-			flag_right_locate_begin = 0;
-
-			if ((!flag_left_locate_error) && (!flag_right_locate_error))
-			{
-
-				ANGLE = -atan((ROW_RIGHT_8 - ROW_LEFT_8) / (COL_RIGHT_8 - COL_LEFT_8));
-				//OnShowList();
-				if (CADtest(true))
-				{
-					//将定位数据传给数据库
-					vs_x = ROW_LEFT_8;
-					vs_y = COL_LEFT_8;
-					vs_x_right = ROW_RIGHT_8;
-					vs_y_right = COL_RIGHT_8;
-					vs_theta = ANGLE;
-					//将定位数据传给PLC
-					Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X * 10);
-					Result[1] = (int)(COL_LEFT_8 * 10 - BIAO_Y * 10);
-					Result[2] = (int)(ANGLE * 10000);
-					SetTimer(2, 50, NULL);
-					//将所有定位数据置零
-					OnInitLocateData();
-				}
-
-			}
-
-			if (locate_times_error >= 3)
-			{
-				vs_x = -1;
-				vs_y = -1;
-				vs_theta = -1;
-				vs_x_right = -1;
-				vs_y_right = -1;
-				//将定位数据传给PLC
-				Result[0] = -1;
-				Result[1] = -1;
-				Result[2] = -1;
-
-				//发送完错误信号 开启查询定时器 等待PLC按下重新识别按钮
-				SendDone = true;
-				insertdata = 0;
-				Sleep(100);
-				SendData(1, 73, 21061);
-				Sleep(50);
-				ReSetTime();
-				//将所有定位数据置零
-				OnInitLocateData();
-				//AfxMessageBox(_T("图像定位失败"));
-				locate_times_error = 0;
-
-			}
-			//在错误次数==1或==2时并且继续出错时，将到位标志置1，再次执行定位
-			if ((locate_times_error == 1 && (flag_right_locate_error || flag_left_locate_error)) || (locate_times_error == 2 && (flag_right_locate_error || flag_left_locate_error)))
-			{
-				Sleep(500);
-				ArriveFlag = true;
-			}
-
-
-		}
-	}
-	else
-	{
 		ArriveFlag = false;
 		flag_locate_left_over = 0;
 		flag_locate_right_over = 0;
@@ -2382,30 +2294,32 @@ void CvisionDlg::OnAllLeftLocate()
 		//左右相机开始标志位置零
 		flag_left_locate_begin = 0;
 		flag_right_locate_begin = 0;
-		if (!flag_left_locate_error)
+
+		if ((!flag_left_locate_error)&& (!flag_right_locate_error))
 		{
-			ANGLE = width_line_phi_left_8;
+
+			ANGLE = -atan((ROW_RIGHT_8 - ROW_LEFT_8) / (COL_RIGHT_8 - COL_LEFT_8));
 			//OnShowList();
-			//if (CADtest(true))
+			if (CADtest())
 			{
 				//将定位数据传给数据库
 				vs_x = ROW_LEFT_8;
 				vs_y = COL_LEFT_8;
-				vs_x_right = 0;
-				vs_y_right = 0;
+				vs_x_right = ROW_RIGHT_8;
+				vs_y_right = COL_RIGHT_8;
 				vs_theta = ANGLE;
 				//将定位数据传给PLC
-				Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X * 10);
-				Result[1] = (int)(COL_LEFT_8 * 10 - BIAO_Y * 10);
+				Result[0] = (int)(ROW_LEFT_8 * 10 - BIAO_X*10);
+				Result[1] = (int)(COL_LEFT_8 * 10 - BIAO_Y*10);
 				Result[2] = (int)(ANGLE * 10000);
 				SetTimer(2, 50, NULL);
 				//将所有定位数据置零
 				OnInitLocateData();
 			}
-
+			
 		}
 
-		if (locate_times_error >= 3)
+		if(locate_times_error >= 3)
 		{
 			vs_x = -1;
 			vs_y = -1;
@@ -2416,7 +2330,7 @@ void CvisionDlg::OnAllLeftLocate()
 			Result[0] = -1;
 			Result[1] = -1;
 			Result[2] = -1;
-
+			
 			//发送完错误信号 开启查询定时器 等待PLC按下重新识别按钮
 			SendDone = true;
 			insertdata = 0;
@@ -2428,7 +2342,7 @@ void CvisionDlg::OnAllLeftLocate()
 			OnInitLocateData();
 			//AfxMessageBox(_T("图像定位失败"));
 			locate_times_error = 0;
-
+			
 		}
 		//在错误次数==1或==2时并且继续出错时，将到位标志置1，再次执行定位
 		if ((locate_times_error == 1 && (flag_right_locate_error || flag_left_locate_error)) || (locate_times_error == 2 && (flag_right_locate_error || flag_left_locate_error)))
@@ -2437,8 +2351,7 @@ void CvisionDlg::OnAllLeftLocate()
 			ArriveFlag = true;
 		}
 
-
-	
+		
 	}
 	/*remove("D://HX-master/HX-master/HX/left.bmp");
 	remove("D:/HX-master/HX-master/HX/right.bmp");
@@ -2508,7 +2421,7 @@ void CvisionDlg::OnAllRightLocate()
 		{
 			ANGLE = -atan((ROW_RIGHT_8 - ROW_LEFT_8) / (COL_RIGHT_8 - COL_LEFT_8));
 			//OnShowList();
-			if (CADtest(true))
+			if (CADtest())
 			{
 				//将定位数据传给数据库
 				vs_x = ROW_LEFT_8;
