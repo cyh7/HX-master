@@ -46,8 +46,8 @@ int num_right;
 //传给PLC的定位数据
 int Result[3] = {0,0,0};
 //和PLC约定的定标位置
-int BIAO_X=700;
-int BIAO_Y=-450;
+int BIAO_X=701;
+int BIAO_Y=-451;
 
 int CADtest(bool);
 
@@ -99,7 +99,7 @@ double ROW_RIGHT_8;
 double COL_RIGHT_8;
 double ANGLE;
 double CADdata;
-int flag_r = 0;//7线flag_r设置为0，8线flag_r设置为12500
+int flag_r = 12500;//7线flag_r设置为0，8线flag_r设置为12500
 
 //定义左右角点的距离
 double Distance;
